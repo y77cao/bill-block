@@ -1,0 +1,33 @@
+.main {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.headerContainer {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.contentContainer {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    position: relative;
+}
+
+.buttonContainer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    margin: auto;
+    width: 400px;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+}
