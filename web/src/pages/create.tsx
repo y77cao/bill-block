@@ -1,9 +1,12 @@
 import { Button } from "@mui/material";
 import TextField from "@mui/material/TextField";
 
+import { PageHeader } from "@/components/PageHeader";
+
 export default function Create() {
   return (
     <div>
+      <PageHeader />
       <div>INVOICE</div>
       <div>
         <TextField

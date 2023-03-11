@@ -2,19 +2,26 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 error InvalidInvoiceId();
 error InvalidAddress();
 error IncorrectTransactionValue();
+error InvalidTerminationTime();
+error TokenUnmatch();
 
 // TODO interface
-abstract contract InvoiceFactory is ReentrancyGuard {
+contract InvoiceFactory is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public constant MAX_TERMINATION_TIME = 63113904; // 2-year limit on locker
+    enum InvoiceStatus {
+        CREATED,
+        FUNDED,
+        TERMINATED
+    }
+    uint256 public constant MAX_TERMINATION_TIME = 63113904; // 2-year
     address public wrappedNativeToken;
 
     uint256 internal invoiceCount = 0;
@@ -31,6 +38,7 @@ abstract contract InvoiceFactory is ReentrancyGuard {
         uint256 currMilestone;
         uint256 amountReleased;
         uint256[] amounts; // milestones split into amounts
+        InvoiceStatus status;
     }
 
     event Created(
@@ -44,50 +52,51 @@ abstract contract InvoiceFactory is ReentrancyGuard {
         bool isErc721,
         address indexed sender,
         address token,
-        uint256 amount
+        uint256[] amounts
     );
     event Release(uint256 milestone, uint256 amount);
     event Withdraw(uint256 invoiceId, uint256 balance);
     event Verified(address indexed client, address indexed invoice);
 
     function createInvoice(
-        address _client,
-        address _provider,
-        address _token,
-        uint256[] calldata _amounts,
-        uint256 _terminationTime // exact termination date in seconds since epoch
+        address client,
+        address provider,
+        address token,
+        uint256[] calldata amounts,
+        uint256 terminationTime // exact termination date in seconds since epoch
     ) external {
-        require(_client != address(0), "invalid client");
-        require(_provider != address(0), "invalid provider");
-        require(_token != address(0), "invalid token");
-        require(_terminationTime > block.timestamp, "duration ended");
-        require(
-            _terminationTime <= block.timestamp + MAX_TERMINATION_TIME,
-            "duration too long"
-        );
+        if (client == address(0) || (provider == address(0)))
+            revert InvalidAddress();
+        if (
+            terminationTime < block.timestamp ||
+            terminationTime > block.timestamp + MAX_TERMINATION_TIME
+        ) revert InvalidTerminationTime();
+
+        // TODO check token address is erc??
 
         uint256 nextId = invoiceCount;
         uint256 total = 0;
-        for (uint256 i = 0; i < _amounts.length; i++) {
-            total = total + _amounts[i];
+        for (uint256 i = 0; i < amounts.length; i++) {
+            total = total + amounts[i];
         }
         invoices[nextId] = InvoiceMetadata({
-            client: _client,
-            provider: _provider,
-            token: _token,
-            terminationTime: _terminationTime,
+            client: client,
+            provider: provider,
+            token: token,
+            terminationTime: terminationTime,
             total: total,
             currMilestone: 0,
             amountReleased: 0,
-            amounts: _amounts
+            amounts: amounts,
+            status: InvoiceStatus.CREATED
         });
-        providerToInvoices[_provider].push(nextId);
-        clientToInvoices[_client].push(nextId);
+        providerToInvoices[provider].push(nextId);
+        clientToInvoices[client].push(nextId);
 
         // _safeMint(_client, nextId);
         invoiceCount = invoiceCount + 1;
 
-        emit Created(nextId, _client, _provider, _amounts);
+        emit Created(nextId, client, provider, amounts);
     }
 
     function getInvoice(uint256 id)
@@ -125,97 +134,35 @@ abstract contract InvoiceFactory is ReentrancyGuard {
             revert InvalidInvoiceId();
         InvoiceMetadata memory invoice = invoices[invoiceId];
         if (msg.sender != invoice.client) revert InvalidAddress();
+        if (token != invoice.token) revert TokenUnmatch();
 
         uint256 sum = 0;
         for (uint256 i; i < amounts.length; ++i) {
             sum += amounts[i];
         }
 
+        invoice.status = InvoiceStatus.FUNDED;
         // ETH transfer
         if (msg.value != 0) {
             if (msg.value != sum) revert IncorrectTransactionValue();
-            // Overrides to clarify ETH is used.
-            if (token != address(0)) token = address(0);
-            if (isErc721) isErc721 = false;
+            if (msg.value != invoice.total) revert IncorrectTransactionValue();
+            if (token != address(0) || isErc721) revert TokenUnmatch();
         } else {
             // ERC-20/ERC-721 transfer
-            safeTransferFrom(token, msg.sender, address(this), sum);
-        }
-
-        emit Deposit(invoiceId, isErc721, msg.sender, token, sum);
-    }
-
-    // TODO don't understand this. Better to use safeTransferFrom from openzeppelin
-    function safeTransferFrom(
-        address token,
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal {
-        bool callStatus;
-
-        assembly {
-            // Get a pointer to some free memory.
-            let freeMemoryPointer := mload(0x40)
-
-            // Write the abi-encoded calldata to memory piece by piece:
-            mstore(
-                freeMemoryPointer,
-                0x23b872dd00000000000000000000000000000000000000000000000000000000
-            ) // Begin with the function selector.
-            mstore(
-                add(freeMemoryPointer, 4),
-                and(sender, 0xffffffffffffffffffffffffffffffffffffffff)
-            ) // Mask and append the "from" argument.
-            mstore(
-                add(freeMemoryPointer, 36),
-                and(recipient, 0xffffffffffffffffffffffffffffffffffffffff)
-            ) // Mask and append the "to" argument.
-            mstore(add(freeMemoryPointer, 68), amount) // Finally append the "amount" argument. No mask as it's a full 32 byte value.
-
-            // Call the token and store if it succeeded or not.
-            // We use 100 because the calldata length is 4 + 32 * 3.
-            callStatus := call(gas(), token, 0, freeMemoryPointer, 100, 0, 0)
-        }
-
-        require(
-            didLastOptionalReturnCallSucceed(callStatus),
-            "TRANSFER_FROM_FAILED"
-        );
-    }
-
-    function didLastOptionalReturnCallSucceed(bool callStatus)
-        private
-        pure
-        returns (bool success)
-    {
-        assembly {
-            // If the call reverted:
-            if iszero(callStatus) {
-                // Copy the revert message into memory.
-                returndatacopy(0, 0, returndatasize())
-
-                // Revert with the same message.
-                revert(0, returndatasize())
-            }
-
-            switch returndatasize()
-            case 32 {
-                // Copy the return data into memory.
-                returndatacopy(0, 0, returndatasize())
-
-                // Set success to whether it returned true.
-                success := iszero(iszero(mload(0)))
-            }
-            case 0 {
-                // There was no return data.
-                success := 1
-            }
-            default {
-                // It returned some malformed output.
-                success := 0
+            if (isErc721) {
+                // TODO validate, transfer all
+                IERC721(token).safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    amounts[0]
+                );
+            } else {
+                if (invoice.total != sum) revert IncorrectTransactionValue();
+                IERC20(token).safeTransferFrom(msg.sender, address(this), sum);
             }
         }
+
+        emit Deposit(invoiceId, isErc721, msg.sender, token, amounts);
     }
 
     // function release(uint256 invoiceId) external override nonReentrant {

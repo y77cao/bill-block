@@ -1,16 +1,39 @@
+import React, { useEffect, useState } from "react";
 import Button from "@mui/material/Button";
-import styles from "../styles/index.module.css";
 import { useRouter } from "next/router";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch } from "@/redux/store";
+
+import { init } from "../redux/blockchainSlice";
+import styles from "../styles/index.module.css";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function Home() {
   const router = useRouter();
 
+  const dispatch = useDispatch<AppDispatch>();
+  // @ts-ignore
+  const blockchain = useSelector((state) => state.blockchain);
+  // @ts-ignore
+  const app = useSelector((state) => state.app);
+
+  useEffect(() => {
+    dispatch(init());
+
+    // @ts-ignore checked in init
+    const { ethereum } = window;
+    // ethereum?.on("accountsChanged", (accounts) =>
+    //   dispatch(updateAccountMetadata(accounts[0]))
+    // );
+    // ethereum?.on("chainChanged", (chainId) => {
+    //   window.location.reload();
+    //   dispatch(init());
+    // });
+  }, []);
+
   return (
     <div className={styles.main}>
-      <div className={styles.headerContainer}>
-        <div>BillBlock</div>
-        <Button variant="contained">Connect Wallet</Button>
-      </div>
+      <PageHeader />
       <div className={styles.contentContainer}>
         <div className={styles.buttonContainer}>
           <Button variant="contained" onClick={() => router.push("/create")}>
