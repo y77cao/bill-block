@@ -1,3 +1,4 @@
+import { Invoice } from "@/types";
 import { ethers, BigNumber } from "ethers";
 import InvoiceFactory from "../abi/InvoiceFactory.json";
 
@@ -31,7 +32,7 @@ export class ContractClient {
 
     const provider = new ethers.providers.Web3Provider(ethereum);
     const contract = new ethers.Contract(
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string,
       InvoiceFactory,
       provider
     );
@@ -71,15 +72,40 @@ export class ContractClient {
     return txn;
   }
 
-  async mint(text: string, parentId: number) {
-    if (!text || !text.length || text.length > 280) {
-      throw new Error("Invalid text length");
-    }
+  async createInvoice(invoice: Invoice) {
     const signer = this.provider.getSigner();
     const contractWithSigner = this.contract.connect(signer);
-    const txn = await contractWithSigner.mint(text, parentId, {
-      value: 0,
+
+    const {
+      clientAddress,
+      providerAddress,
+      date,
+      dueDate,
+      itemName,
+      itemDescription,
+      token,
+      amount,
+      currency,
+      tokenAddress,
+      milestones,
+    } = invoice;
+    const amountInWei = ethers.utils.parseEther(amount);
+    const epochDate = Math.round(dueDate.getTime() / 1000);
+    const epochDueDate = Math.round(dueDate.getTime() / 1000);
+
+    console.log({
+      clientAddress,
+      providerAddress,
+      amountInWei: amountInWei.toString(),
+      epochDueDate,
     });
+    const txn = await contractWithSigner.createInvoice(
+      clientAddress,
+      providerAddress,
+      ethers.constants.AddressZero,
+      [amountInWei],
+      epochDueDate
+    );
     await txn.wait();
     return txn;
   }

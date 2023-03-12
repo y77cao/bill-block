@@ -1,11 +1,14 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { ContractClient } from "../clients/contractClient";
 import { ethers, BigNumber } from "ethers";
+import { appError } from "./appSlice";
+import { Invoice } from "@/types";
 
 const initialState = {
   loading: false,
   account: null,
   contractClient: null,
+  tx: null,
 };
 
 export const blockchainSlice = createSlice({
@@ -28,12 +31,6 @@ export const blockchainSlice = createSlice({
     fetchDataSuccess: (state, action) => {
       state.loading = false;
     },
-    checkBalanceRequest: (state) => {
-      state.loading = true;
-    },
-    checkBalanceSuccess: (state, action) => {
-      state.loading = false;
-    },
     withdrawFundRequest: (state) => {
       state.loading = true;
     },
@@ -48,11 +45,12 @@ export const blockchainSlice = createSlice({
     previewMintSuccess: (state, action) => {
       state.loading = false;
     },
-    mintRequest: (state) => {
+    createInvoiceRequest: (state) => {
       state.loading = true;
     },
-    mintSuccess: (state, action) => {
+    createInvoiceSuccess: (state, action) => {
       state.loading = false;
+      state.tx = action.payload.tx;
     },
     clearTransaction: (state) => {},
     error: (state) => {
@@ -73,14 +71,12 @@ export const {
   connectSuccess,
   fetchDataRequest,
   fetchDataSuccess,
-  checkBalanceRequest,
-  checkBalanceSuccess,
   withdrawFundRequest,
   withdrawFundSuccess,
   previewMintRequest,
   previewMintSuccess,
-  mintRequest,
-  mintSuccess,
+  createInvoiceRequest,
+  createInvoiceSuccess,
   error,
   clearTransaction,
   updateAccountRequest,
@@ -106,7 +102,7 @@ export const connect = () => async (dispatch, getState) => {
     dispatch(connectSuccess({ account }));
   } catch (err) {
     dispatch(error());
-    // dispatch(appError(err.message));
+    dispatch(appError(err.message));
   }
 };
 
@@ -133,23 +129,23 @@ export const connect = () => async (dispatch, getState) => {
 //     }
 //   };
 
-// export const mint =
-//   (text: string, parentId: number) => async (dispatch, getState) => {
-//     dispatch(mintRequest());
-//     try {
-//       const state = getState();
-//       const { contractClient } = state.blockchain;
-//       const txn = await contractClient.mint(text, parentId);
-//       dispatch(
-//         mintSuccess({
-//           transaction: txn,
-//         })
-//       );
-//     } catch (err) {
-//       dispatch(error());
-//       dispatch(appError(err.message));
-//     }
-//   };
+export const createInvoice =
+  (invoice: Invoice) => async (dispatch, getState) => {
+    dispatch(createInvoiceRequest());
+    try {
+      const state = getState();
+      const { contractClient } = state.blockchain;
+      const txn = await contractClient.createInvoice(invoice);
+      dispatch(
+        createInvoiceSuccess({
+          transaction: txn,
+        })
+      );
+    } catch (err) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+  };
 
 // export const fetchData = () => async (dispatch, getState) => {
 //   dispatch(fetchDataRequest());

@@ -1,0 +1,86 @@
+.createContainer {
+  display: flex;
+  justify-content: center;
+  margin: 20px;
+}
+
+.invoiceContainer {
+  width: 800px;
+}
+
+.invoiceTitle {
+  font-size: 2rem;
+  margin: 20px;
+}
+
+.invoiceTop {
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  margin: 20px;
+}
+
+.invoiceTopRight {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  align-items: flex-end;
+}
+
+.invoiceTopRight > * {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
+.invoiceTopLeft > * {
+  margin: 5px 0;
+}
+
+.itemContainer {
+  display: flex;
+  margin: 20px;
+  justify-content: space-between;
+}
+
+.itemLeft {
+  width: 300px;
+}
+
+.itemLeft > * {
+  margin: 15px 0;
+}
+
+.itemRight {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.itemRight > * {
+  margin: 15px 0;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.milestoneContainer {
+  display: flex;
+  margin: 20px;
+  justify-content: space-between;
+}
+
+.createInvoiceContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.createInvoiceContainer > * {
+  margin: 10px 0;
+  width: 70%;
+}

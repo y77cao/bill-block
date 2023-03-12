@@ -1,5 +1,14 @@
 .headerContainer {
-    display: flex;
-    width: 100%;
-    justify-content: space-between;
+  width: 100%;
+}
+
+.topContainer {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topContainer > * {
+  margin: 10px;
 }
