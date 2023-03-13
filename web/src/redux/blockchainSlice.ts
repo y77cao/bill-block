@@ -3,12 +3,14 @@ import { ContractClient } from "../clients/contractClient";
 import { ethers, BigNumber } from "ethers";
 import { appError } from "./appSlice";
 import { Invoice } from "@/types";
+import { parseInvoices } from "@/utils";
 
 const initialState = {
   loading: false,
   account: null,
   contractClient: null,
-  tx: null,
+  transaction: null,
+  invoices: [],
 };
 
 export const blockchainSlice = createSlice({
@@ -31,28 +33,30 @@ export const blockchainSlice = createSlice({
     fetchDataSuccess: (state, action) => {
       state.loading = false;
     },
-    withdrawFundRequest: (state) => {
+    payInvoiceRequest: (state) => {
       state.loading = true;
     },
-    withdrawFundSuccess: (state, action) => {
+    payInvoiceSuccess: (state, action) => {
       state.loading = false;
-      //@ts-ignore
-      state.tokenIdWithBalance.balance = BigNumber.from(0);
+      state.transaction = action.payload.transaction;
     },
-    previewMintRequest: (state) => {
+    getInvoicesByProviderRequest: (state) => {
       state.loading = true;
     },
-    previewMintSuccess: (state, action) => {
+    getInvoicesByProviderSuccess: (state, action) => {
       state.loading = false;
+      state.invoices = action.payload.invoices;
     },
     createInvoiceRequest: (state) => {
       state.loading = true;
     },
     createInvoiceSuccess: (state, action) => {
       state.loading = false;
-      state.tx = action.payload.tx;
+      state.transaction = action.payload.transaction;
     },
-    clearTransaction: (state) => {},
+    clearTransaction: (state) => {
+      state.transaction = null;
+    },
     error: (state) => {
       state.loading = false;
     },
@@ -60,7 +64,9 @@ export const blockchainSlice = createSlice({
       state.loading = true;
     },
     updateAccountSuccess: (state, action) => {
+      state.loading = false;
       state.account = action.payload.account;
+      state.invoices = action.payload.invoices;
     },
   },
 });
@@ -71,10 +77,10 @@ export const {
   connectSuccess,
   fetchDataRequest,
   fetchDataSuccess,
-  withdrawFundRequest,
-  withdrawFundSuccess,
-  previewMintRequest,
-  previewMintSuccess,
+  payInvoiceRequest,
+  payInvoiceSuccess,
+  getInvoicesByProviderRequest,
+  getInvoicesByProviderSuccess,
   createInvoiceRequest,
   createInvoiceSuccess,
   error,
@@ -94,50 +100,85 @@ export const init = () => async (dispatch) => {
   }
 };
 
-export const connect = () => async (dispatch, getState) => {
+export const connectWallet = () => async (dispatch, getState) => {
   dispatch(connectRequest());
   try {
     const state = getState();
     const account = await ContractClient.connectWallet();
     dispatch(connectSuccess({ account }));
+    dispatch(getInvoicesByProvider(account));
   } catch (err) {
     dispatch(error());
     dispatch(appError(err.message));
   }
 };
 
-// export const updateAccountMetadata =
-//   (account) => async (dispatch, getState) => {
-//     dispatch(updateAccountRequest());
-//     try {
-//       const state = getState();
-//       const { contractClient, stories } = state.blockchain;
-//       const numberOfOwnedTokens = (
-//         await contractClient.getNumberOfOwnedTokens(account)
-//       ).toNumber();
-//       const nextTokenId = Object.values(stories).flat().length;
-//       const canMintWithTitle = await contractClient.canMintWithTitle(
-//         BigNumber.from(nextTokenId),
-//         account
-//       );
-//       dispatch(
-//         updateAccountSuccess({ account, numberOfOwnedTokens, canMintWithTitle })
-//       );
-//     } catch (err) {
-//       dispatch(error());
-//       dispatch(appError(err.message));
-//     }
-//   };
-
-export const createInvoice =
-  (invoice: Invoice) => async (dispatch, getState) => {
-    dispatch(createInvoiceRequest());
+export const getInvoicesByProvider =
+  (address) => async (dispatch, getState) => {
+    dispatch(getInvoicesByProviderRequest());
     try {
       const state = getState();
       const { contractClient } = state.blockchain;
-      const txn = await contractClient.createInvoice(invoice);
+      const invoices = await contractClient.getInvoicesByProvider(address);
+      const parsedInvoices = parseInvoices(invoices);
+      dispatch(getInvoicesByProviderSuccess({ invoices: parsedInvoices }));
+    } catch (err) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+  };
+
+export const updateAccountData = (newAccount) => async (dispatch, getState) => {
+  dispatch(updateAccountRequest());
+  try {
+    const state = getState();
+    const { contractClient, account } = state.blockchain;
+
+    const invoices = account
+      ? await contractClient.getInvoicesByProvider(account)
+      : [];
+    const parsedInvoices = parseInvoices(invoices);
+    dispatch(
+      updateAccountSuccess({ account: newAccount, invoices: parsedInvoices })
+    );
+  } catch (err) {
+    dispatch(error());
+    dispatch(appError(err.message));
+  }
+};
+
+export const createInvoice = (invoice) => async (dispatch, getState) => {
+  dispatch(createInvoiceRequest());
+  try {
+    const state = getState();
+    const { contractClient } = state.blockchain;
+    const txn = await contractClient.createInvoice(invoice);
+    dispatch(
+      createInvoiceSuccess({
+        transaction: txn,
+      })
+    );
+  } catch (err) {
+    dispatch(error());
+    dispatch(appError(err.message));
+  }
+};
+
+export const payInvoice =
+  ({ invoiceId, amounts, token, isErc721 }) =>
+  async (dispatch, getState) => {
+    dispatch(payInvoiceRequest());
+    try {
+      const state = getState();
+      const { contractClient } = state.blockchain;
+      const txn = await contractClient.payInvoice({
+        invoiceId,
+        amounts,
+        token,
+        isErc721,
+      });
       dispatch(
-        createInvoiceSuccess({
+        payInvoiceSuccess({
           transaction: txn,
         })
       );
@@ -177,54 +218,5 @@ export const createInvoice =
 //     dispatch(appError(err.message));
 //   }
 // };
-
-// export const checkBalance = (tokenId) => async (dispatch, getState) => {
-//   dispatch(checkBalanceRequest());
-//   try {
-//     const state = getState();
-//     const { contractClient } = state.blockchain;
-//     const balance = await contractClient.getBalanceOf(BigNumber.from(tokenId));
-//     dispatch(checkBalanceSuccess({ tokenId, balance }));
-//   } catch (err) {
-//     dispatch(error());
-//     dispatch(appError(err.message));
-//   }
-// };
-
-// export const withdrawFund =
-//   (tokenId, balance) => async (dispatch, getState) => {
-//     dispatch(withdrawFundRequest());
-//     try {
-//       const state = getState();
-//       const { contractClient } = state.blockchain;
-//       const txn = await contractClient.withdraw(tokenId, balance);
-//       dispatch(
-//         withdrawFundSuccess({
-//           transaction: txn,
-//         })
-//       );
-//     } catch (err) {
-//       dispatch(error());
-//       dispatch(appError(err.message));
-//     }
-//   };
-
-// export const previewMint =
-//   (text, creator, title) => async (dispatch, getState) => {
-//     dispatch(previewMintRequest());
-//     try {
-//       const state = getState();
-//       const { contractClient } = state.blockchain;
-//       const svgString = await contractClient.generateSvg(text, creator, title);
-//       dispatch(
-//         previewMintSuccess({
-//           svgString,
-//         })
-//       );
-//     } catch (err) {
-//       dispatch(error());
-//       dispatch(appError(err.message));
-//     }
-//   };
 
 export default blockchainSlice.reducer;

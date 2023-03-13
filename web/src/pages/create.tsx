@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/router";
 import {
   Button,
   Paper,
@@ -8,17 +9,26 @@ import {
   Select,
   MenuItem,
   FormControl,
+  Modal,
 } from "@mui/material";
 import { DateField } from "@mui/x-date-pickers";
 import TextField from "@mui/material/TextField";
 
-import { createInvoice, init } from "../redux/blockchainSlice";
+import {
+  clearTransaction,
+  createInvoice,
+  init,
+  updateAccountData,
+} from "../redux/blockchainSlice";
 import styles from "@/styles/create.module.css";
-import { PageHeader } from "@/components/PageHeader";
+import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
 
 export default function Create() {
+  const router = useRouter();
+
   const dispatch = useDispatch<AppDispatch>();
+  const blockchain = useSelector((state) => state.blockchain);
 
   const [providerAddress, setProviderAddress] = useState("");
   const [clientAddress, setClientAddress] = useState("");
@@ -35,13 +45,13 @@ export default function Create() {
 
     // @ts-ignore checked in init
     const { ethereum } = window;
-    // ethereum?.on("accountsChanged", (accounts) =>
-    //   dispatch(updateAccountMetadata(accounts[0]))
-    // );
-    // ethereum?.on("chainChanged", (chainId) => {
-    //   window.location.reload();
-    //   dispatch(init());
-    // });
+    ethereum?.on("accountsChanged", (accounts) => {
+      dispatch(updateAccountData(accounts[0]));
+    });
+    ethereum?.on("chainChanged", (chainId) => {
+      window.location.reload();
+      dispatch(init());
+    });
   }, []);
 
   const onClickCreate = () => {
@@ -56,6 +66,7 @@ export default function Create() {
         amount,
         currency,
         token,
+        isErc721: false, // TODO
       })
     );
   };
@@ -194,6 +205,31 @@ export default function Create() {
           </div>
         </Paper>
       </div>
+      <Modal
+        open={blockchain.transaction != null}
+        onClose={() => dispatch(clearTransaction())}
+      >
+        <div className={styles.modalContainer}>
+          <>Invoice created successfully!</>
+          <div className={styles.buttonContainer}>
+            <Button
+              variant="contained"
+              onClick={() => dispatch(clearTransaction())}
+            >
+              View Transaction
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                dispatch(clearTransaction());
+                router.push("/dashboard");
+              }}
+            >
+              View Invoice
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

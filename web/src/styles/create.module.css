@@ -84,3 +84,25 @@
   margin: 10px 0;
   width: 70%;
 }
+
+.modalContainer {
+  width: 400px;
+  height: 200px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.buttonContainer {
+  display: flex;
+  justify-content: space-around;
+  width: 90%;
+}

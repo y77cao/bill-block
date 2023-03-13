@@ -72,6 +72,10 @@ export class ContractClient {
     return txn;
   }
 
+  async getInvoicesByProvider(providerAddress: string) {
+    return this.contract.getInvoicesByProvider(providerAddress);
+  }
+
   async createInvoice(invoice: Invoice) {
     const signer = this.provider.getSigner();
     const contractWithSigner = this.contract.connect(signer);
@@ -88,23 +92,39 @@ export class ContractClient {
       currency,
       tokenAddress,
       milestones,
+      isErc721,
     } = invoice;
     const amountInWei = ethers.utils.parseEther(amount);
     const epochDate = Math.round(dueDate.getTime() / 1000);
     const epochDueDate = Math.round(dueDate.getTime() / 1000);
 
-    console.log({
-      clientAddress,
-      providerAddress,
-      amountInWei: amountInWei.toString(),
-      epochDueDate,
-    });
     const txn = await contractWithSigner.createInvoice(
       clientAddress,
       providerAddress,
       ethers.constants.AddressZero,
       [amountInWei],
-      epochDueDate
+      epochDueDate,
+      isErc721
+    );
+    await txn.wait();
+    return txn;
+  }
+
+  async payInvoice({ invoiceId, amounts, token, isErc721 }) {
+    const signer = this.provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+
+    const amountsInWei = amounts.map((amount) =>
+      ethers.utils.parseEther(amount)
+    );
+
+    // TODO: handle erc721, ERC20
+    const txn = await contractWithSigner.deposit(
+      invoiceId,
+      ethers.constants.AddressZero,
+      amountsInWei,
+      isErc721,
+      { value: amountsInWei[0] }
     );
     await txn.wait();
     return txn;

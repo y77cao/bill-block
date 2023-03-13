@@ -1,18 +1,14 @@
 import React from "react";
 import { Button, Alert } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, connect } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 
 import styles from "../styles/PageHeader.module.css";
-import { connect } from "@/redux/blockchainSlice";
+import { connectWallet } from "@/redux/blockchainSlice";
 import { clearAppError } from "@/redux/appSlice";
 
-export const PageHeader = () => {
+const PageHeader = ({ account, error }) => {
   const dispatch = useDispatch<AppDispatch>();
-  // @ts-ignore
-  const blockchain = useSelector((state) => state.blockchain);
-  const app = useSelector((state) => state.app);
-
   return (
     <div className={styles.headerContainer}>
       <div className={styles.topContainer}>
@@ -20,19 +16,26 @@ export const PageHeader = () => {
         <Button
           variant="contained"
           onClick={() => {
-            if (!blockchain.account) dispatch(connect());
+            if (!account) dispatch(connectWallet());
           }}
         >
-          {blockchain.account ? blockchain.account : "Connect Wallet"}
+          {account ? account : "Connect Wallet"}
         </Button>
       </div>
       <div className={styles.alertContainer}>
-        {app.errorMsg ? (
+        {error ? (
           <Alert severity="error" onClose={() => dispatch(clearAppError())}>
-            {app.errorMsg}
+            {error}
           </Alert>
         ) : null}
       </div>
     </div>
   );
 };
+
+const mapStateToProps = (state, ownProps) => ({
+  account: state.blockchain.account,
+  error: state.app.errorMsg,
+  ...ownProps,
+});
+export default connect(mapStateToProps)(PageHeader);

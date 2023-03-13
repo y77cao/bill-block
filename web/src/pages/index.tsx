@@ -4,9 +4,9 @@ import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 
-import { init } from "../redux/blockchainSlice";
+import { init, updateAccountData } from "../redux/blockchainSlice";
 import styles from "../styles/index.module.css";
-import { PageHeader } from "@/components/PageHeader";
+import PageHeader from "@/components/PageHeader";
 
 export default function Home() {
   const router = useRouter();
@@ -22,13 +22,13 @@ export default function Home() {
 
     // @ts-ignore checked in init
     const { ethereum } = window;
-    // ethereum?.on("accountsChanged", (accounts) =>
-    //   dispatch(updateAccountMetadata(accounts[0]))
-    // );
-    // ethereum?.on("chainChanged", (chainId) => {
-    //   window.location.reload();
-    //   dispatch(init());
-    // });
+    ethereum?.on("accountsChanged", (accounts) =>
+      dispatch(updateAccountData(accounts[0]))
+    );
+    ethereum?.on("chainChanged", (chainId) => {
+      window.location.reload();
+      dispatch(init());
+    });
   }, []);
 
   return (

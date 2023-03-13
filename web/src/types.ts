@@ -1,4 +1,5 @@
 export type Invoice = {
+  id: string;
   providerAddress: string;
   clientAddress: string;
   date: Date;
@@ -10,4 +11,12 @@ export type Invoice = {
   currency?: string;
   tokenAddress?: string;
   milestones?: unknown[];
+  status: InvoiceStatus;
+  isErc721: boolean;
 };
+
+export enum InvoiceStatus {
+  CREATED = 0,
+  FUNDED,
+  TERMINATED,
+}

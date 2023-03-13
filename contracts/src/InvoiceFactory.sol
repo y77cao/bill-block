@@ -11,6 +11,7 @@ error InvalidAddress();
 error IncorrectTransactionValue();
 error InvalidTerminationTime();
 error TokenUnmatch();
+error IncorrectInvoiceStatus();
 
 // TODO interface
 contract InvoiceFactory is ReentrancyGuard {
@@ -33,11 +34,13 @@ contract InvoiceFactory is ReentrancyGuard {
         address client;
         address provider;
         address token;
+        uint256 id;
         uint256 terminationTime;
         uint256 total;
         uint256 currMilestone;
         uint256 amountReleased;
         uint256[] amounts; // milestones split into amounts
+        bool isErc721;
         InvoiceStatus status;
     }
 
@@ -63,7 +66,8 @@ contract InvoiceFactory is ReentrancyGuard {
         address provider,
         address token,
         uint256[] calldata amounts,
-        uint256 terminationTime // exact termination date in seconds since epoch
+        uint256 terminationTime, // exact termination date in seconds since epoch
+        bool isErc721
     ) external {
         if (client == address(0) || (provider == address(0)))
             revert InvalidAddress();
@@ -83,12 +87,14 @@ contract InvoiceFactory is ReentrancyGuard {
             client: client,
             provider: provider,
             token: token,
+            id: nextId,
             terminationTime: terminationTime,
             total: total,
             currMilestone: 0,
             amountReleased: 0,
             amounts: amounts,
-            status: InvoiceStatus.CREATED
+            status: InvoiceStatus.CREATED,
+            isErc721: isErc721
         });
         providerToInvoices[provider].push(nextId);
         clientToInvoices[client].push(nextId);
@@ -111,17 +117,35 @@ contract InvoiceFactory is ReentrancyGuard {
     function getInvoicesByProvider(address provider)
         external
         view
-        returns (uint256[] memory)
+        returns (InvoiceMetadata[] memory)
     {
-        return providerToInvoices[provider];
+        uint256[] memory ids = providerToInvoices[provider];
+        InvoiceMetadata[] memory allInvoices = new InvoiceMetadata[](
+            ids.length
+        );
+
+        for (uint256 i = 0; i < ids.length; i++) {
+            allInvoices[i] = invoices[ids[i]];
+        }
+
+        return allInvoices;
     }
 
     function getInvoicesByClient(address client)
         external
         view
-        returns (uint256[] memory)
+        returns (InvoiceMetadata[] memory)
     {
-        return clientToInvoices[client];
+        uint256[] memory ids = clientToInvoices[client];
+        InvoiceMetadata[] memory allInvoices = new InvoiceMetadata[](
+            ids.length
+        );
+
+        for (uint256 i = 0; i < ids.length; i++) {
+            allInvoices[i] = invoices[ids[i]];
+        }
+
+        return allInvoices;
     }
 
     function deposit(
@@ -132,8 +156,11 @@ contract InvoiceFactory is ReentrancyGuard {
     ) public payable nonReentrant {
         if (invoiceId < 0 || invoiceId >= invoiceCount)
             revert InvalidInvoiceId();
-        InvoiceMetadata memory invoice = invoices[invoiceId];
+        InvoiceMetadata storage invoice = invoices[invoiceId];
+
         if (msg.sender != invoice.client) revert InvalidAddress();
+        if (invoice.status != InvoiceStatus.CREATED)
+            revert IncorrectInvoiceStatus();
         if (token != invoice.token) revert TokenUnmatch();
 
         uint256 sum = 0;
@@ -142,6 +169,7 @@ contract InvoiceFactory is ReentrancyGuard {
         }
 
         invoice.status = InvoiceStatus.FUNDED;
+
         // ETH transfer
         if (msg.value != 0) {
             if (msg.value != sum) revert IncorrectTransactionValue();
