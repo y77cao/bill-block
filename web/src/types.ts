@@ -1,22 +1,32 @@
 export type Invoice = {
-  id: string;
+  id?: number;
   providerAddress: string;
   clientAddress: string;
   date: Date;
   dueDate: Date;
   itemName: string;
-  itemDescription: string;
-  token: string;
+  itemDescription?: string;
+  tokenSymbol: string | null;
   amount: string;
-  currency?: string;
-  tokenAddress?: string;
-  milestones?: unknown[];
-  status: InvoiceStatus;
-  isErc721: boolean;
+  tokenAddress: string | null;
+  milestones?: Milestone[];
+  status?: InvoiceStatus;
+  tokenType: TokenType;
+};
+
+export type Milestone = {
+  name: string;
+  amount: string;
 };
 
 export enum InvoiceStatus {
   CREATED = 0,
   FUNDED,
   TERMINATED,
+}
+
+export enum TokenType {
+  ETH = "ETH",
+  ERC20 = "ERC20",
+  ERC721 = "ERC721",
 }

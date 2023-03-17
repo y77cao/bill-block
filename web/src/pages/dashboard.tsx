@@ -12,12 +12,14 @@ import {
   IconButton,
   Collapse,
   Modal,
+  Box,
+  Tab,
 } from "@mui/material";
+import { TabContext, TabList, TabPanel } from "@mui/lab";
 import { KeyboardArrowUp, KeyboardArrowDown } from "@mui/icons-material";
 
 import {
   clearTransaction,
-  getInvoicesByProvider,
   init,
   payInvoice,
   updateAccountData,
@@ -25,11 +27,13 @@ import {
 import styles from "@/styles/dashboard.module.css";
 import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
-import { Invoice } from "@/types";
+import { Invoice, TokenType } from "@/types";
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
   const blockchain = useSelector((state) => state.blockchain);
+
+  const [tabValue, setTabValue] = useState("1");
 
   useEffect(() => {
     dispatch(init());
@@ -65,22 +69,14 @@ export default function Dashboard() {
           </TableCell>
           <TableCell>{row.itemName}</TableCell>
           <TableCell>
-            {row.amount.toString()} {row.currency}
+            {row.tokenType === TokenType.ERC721 ? "1" : row.amount.toString()}{" "}
+            {row.tokenSymbol}
           </TableCell>
           <TableCell>{row.status}</TableCell>
           <TableCell>
             <Button
               variant="contained"
-              onClick={() =>
-                dispatch(
-                  payInvoice({
-                    invoiceId: row.id,
-                    amounts: [row.amount], // TODO milestones
-                    token: row.token,
-                    isErc721: false, // TODO
-                  })
-                )
-              }
+              onClick={() => dispatch(payInvoice(row))}
             >
               Pay
             </Button>
@@ -97,35 +93,66 @@ export default function Dashboard() {
     );
   };
 
-  //   const onClickPay = () => {
-  //     dispatch(payInvoice({}));
-  //   };
-
   return (
     <div>
       <PageHeader />
       <div className={styles.dashboardContainer}>
         <Paper elevation={3} square className={styles.dashboardInnerContainer}>
-          <div className={styles.dashboardHeader}>Invoices</div>
-          <TableContainer>
-            <Table aria-label="collapsible table">
-              <TableHead>
-                <TableRow>
-                  <TableCell />
-                  <TableCell>Invoice #</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {blockchain.invoices.map((row) => (
-                  <Row key={row.id} row={row} />
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <TabContext value={tabValue}>
+            <Box
+              sx={{ borderBottom: 1, borderColor: "divider", width: "100%" }}
+            >
+              <TabList
+                onChange={(event, newValue) => setTabValue(newValue)}
+                aria-label="lab API tabs example"
+              >
+                <Tab label="My Invoices" value="1" />
+                <Tab label="Invoices Sent to Me" value="2" />
+              </TabList>
+            </Box>
+            <TabPanel value="1" sx={{ width: "100%" }}>
+              <TableContainer>
+                <Table aria-label="collapsible table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell />
+                      <TableCell>Invoice #</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Amount</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {blockchain.invoicesByProvider.map((row) => (
+                      <Row key={row.id} row={row} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </TabPanel>
+            <TabPanel value="2" sx={{ width: "100%" }}>
+              <TableContainer>
+                <Table aria-label="collapsible table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell />
+                      <TableCell>Invoice #</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Amount</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {blockchain.invoicesByClient.map((row) => (
+                      <Row key={row.id} row={row} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </TabPanel>
+          </TabContext>
         </Paper>
       </div>
       <Modal

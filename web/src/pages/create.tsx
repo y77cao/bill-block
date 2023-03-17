@@ -23,6 +23,8 @@ import {
 import styles from "@/styles/create.module.css";
 import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
+import { networkIdToTokenSymbolToAddresses } from "@/constants";
+import { TokenType } from "@/types";
 
 export default function Create() {
   const router = useRouter();
@@ -37,8 +39,9 @@ export default function Create() {
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("");
-  const [token, setToken] = useState("ETH");
+  const [currency, setCurrency] = useState<string | null>("WETH");
+  const [tokenType, setTokenType] = useState(TokenType.ETH);
+  const [tokenAddress, setTokenAddress] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(init());
@@ -64,9 +67,9 @@ export default function Create() {
         itemName,
         itemDescription,
         amount,
-        currency,
-        token,
-        isErc721: false, // TODO
+        tokenSymbol: currency,
+        tokenType,
+        tokenAddress,
       })
     );
   };
@@ -146,19 +149,23 @@ export default function Create() {
                 <FormControl>
                   <InputLabel>Token</InputLabel>
                   <Select
-                    value={token}
+                    value={tokenType}
                     label="Token"
                     onChange={(event) => {
-                      setToken(event.target.value as string);
+                      setTokenType(event.target.value as TokenType);
                     }}
                   >
-                    <MenuItem value={"ETH"}>ETH</MenuItem>
-                    <MenuItem value={"ERC20"}>ERC20</MenuItem>
-                    <MenuItem value={"ERC721"}>ERC721</MenuItem>
+                    <MenuItem value={TokenType.ETH}>{TokenType.ETH}</MenuItem>
+                    <MenuItem value={TokenType.ERC20}>
+                      {TokenType.ERC20}
+                    </MenuItem>
+                    <MenuItem value={TokenType.ERC721}>
+                      {TokenType.ERC721}
+                    </MenuItem>
                   </Select>
                 </FormControl>
                 <TextField
-                  label={token === "ERC721" ? "Token ID" : "Amount"}
+                  label={tokenType === TokenType.ERC721 ? "Token ID" : "Amount"}
                   variant="standard"
                   size="small"
                   onChange={(event) => {
@@ -166,20 +173,31 @@ export default function Create() {
                   }}
                 />
               </div>
-              {token !== "ETH" && (
+              {tokenType !== TokenType.ETH && (
                 <div>
-                  <FormControl>
+                  <FormControl
+                    disabled={
+                      tokenType === TokenType.ERC721 || tokenAddress?.length > 0
+                    }
+                  >
                     <InputLabel>Currency</InputLabel>
                     <Select
-                      value={"ETH"}
+                      value={currency}
                       label="Currency"
                       onChange={(event) => {
                         setCurrency(event.target.value as string);
+                        setTokenAddress(null);
                       }}
                     >
-                      <MenuItem value={"ETH"}>ETH</MenuItem>
-                      <MenuItem value={"ERC20"}>ERC20</MenuItem>
-                      <MenuItem value={"ERC721"}>ERC721</MenuItem>
+                      {Object.keys(
+                        networkIdToTokenSymbolToAddresses[
+                          process.env.NEXT_PUBLIC_NETWORK_ID as string
+                        ]
+                      ).map((tokenSymbol) => (
+                        <MenuItem key={tokenSymbol} value={tokenSymbol}>
+                          {tokenSymbol}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                   <>OR</>
@@ -187,13 +205,22 @@ export default function Create() {
                     label="Token address"
                     variant="standard"
                     size="small"
+                    onChange={(event) => {
+                      setTokenAddress(event.target.value as string);
+                      setCurrency(null);
+                    }}
                   />
                 </div>
               )}
             </div>
           </div>
           <div className={styles.milestoneContainer}>
-            <Button variant="contained">Add milestone</Button>
+            <Button
+              variant="contained"
+              disabled={tokenType === TokenType.ERC721}
+            >
+              Add milestone
+            </Button>
           </div>
           <Divider />
           <div className={styles.createInvoiceContainer}>

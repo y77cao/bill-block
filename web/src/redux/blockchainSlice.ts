@@ -10,7 +10,8 @@ const initialState = {
   account: null,
   contractClient: null,
   transaction: null,
-  invoices: [],
+  invoicesByProvider: [],
+  invoicesByClient: [],
 };
 
 export const blockchainSlice = createSlice({
@@ -40,12 +41,13 @@ export const blockchainSlice = createSlice({
       state.loading = false;
       state.transaction = action.payload.transaction;
     },
-    getInvoicesByProviderRequest: (state) => {
+    getInvoicesRequest: (state) => {
       state.loading = true;
     },
-    getInvoicesByProviderSuccess: (state, action) => {
+    getInvoicesSuccess: (state, action) => {
       state.loading = false;
-      state.invoices = action.payload.invoices;
+      state.invoicesByProvider = action.payload.invoicesByProvider;
+      state.invoicesByClient = action.payload.invoicesByClient;
     },
     createInvoiceRequest: (state) => {
       state.loading = true;
@@ -66,7 +68,8 @@ export const blockchainSlice = createSlice({
     updateAccountSuccess: (state, action) => {
       state.loading = false;
       state.account = action.payload.account;
-      state.invoices = action.payload.invoices;
+      state.invoicesByClient = action.payload.invoicesByClient;
+      state.invoicesByProvider = action.payload.invoicesByProvider;
     },
   },
 });
@@ -79,8 +82,8 @@ export const {
   fetchDataSuccess,
   payInvoiceRequest,
   payInvoiceSuccess,
-  getInvoicesByProviderRequest,
-  getInvoicesByProviderSuccess,
+  getInvoicesRequest,
+  getInvoicesSuccess,
   createInvoiceRequest,
   createInvoiceSuccess,
   error,
@@ -106,27 +109,37 @@ export const connectWallet = () => async (dispatch, getState) => {
     const state = getState();
     const account = await ContractClient.connectWallet();
     dispatch(connectSuccess({ account }));
-    dispatch(getInvoicesByProvider(account));
+    dispatch(getInvoices(account));
   } catch (err) {
     dispatch(error());
     dispatch(appError(err.message));
   }
 };
 
-export const getInvoicesByProvider =
-  (address) => async (dispatch, getState) => {
-    dispatch(getInvoicesByProviderRequest());
-    try {
-      const state = getState();
-      const { contractClient } = state.blockchain;
-      const invoices = await contractClient.getInvoicesByProvider(address);
-      const parsedInvoices = parseInvoices(invoices);
-      dispatch(getInvoicesByProviderSuccess({ invoices: parsedInvoices }));
-    } catch (err) {
-      dispatch(error());
-      dispatch(appError(err.message));
-    }
-  };
+export const getInvoices = (address) => async (dispatch, getState) => {
+  dispatch(getInvoicesRequest());
+  try {
+    const state = getState();
+    const { contractClient } = state.blockchain;
+    const invoicesByProvider = await contractClient.getInvoicesByProvider(
+      address
+    );
+    const invoicesByClient = await contractClient.getInvoicesByClient(address);
+    const parsedInvoicesByProvider = await parseInvoices(invoicesByProvider);
+    const parsedInvoicesByClient = await parseInvoices(invoicesByClient);
+
+    dispatch(
+      getInvoicesSuccess({
+        invoicesByProvider: parsedInvoicesByProvider,
+        invoicesByClient: parsedInvoicesByClient,
+      })
+    );
+  } catch (err) {
+    console.log(err);
+    dispatch(error());
+    dispatch(appError(err.message));
+  }
+};
 
 export const updateAccountData = (newAccount) => async (dispatch, getState) => {
   dispatch(updateAccountRequest());
@@ -134,28 +147,19 @@ export const updateAccountData = (newAccount) => async (dispatch, getState) => {
     const state = getState();
     const { contractClient, account } = state.blockchain;
 
-    const invoices = account
+    const invoicesByProvider = account
       ? await contractClient.getInvoicesByProvider(account)
       : [];
-    const parsedInvoices = parseInvoices(invoices);
+    const invoicesByClient = account
+      ? await contractClient.getInvoicesByClient(account)
+      : [];
+    const parsedInvoicesByProvider = await parseInvoices(invoicesByProvider);
+    const parsedInvoicesByClient = await parseInvoices(invoicesByClient);
     dispatch(
-      updateAccountSuccess({ account: newAccount, invoices: parsedInvoices })
-    );
-  } catch (err) {
-    dispatch(error());
-    dispatch(appError(err.message));
-  }
-};
-
-export const createInvoice = (invoice) => async (dispatch, getState) => {
-  dispatch(createInvoiceRequest());
-  try {
-    const state = getState();
-    const { contractClient } = state.blockchain;
-    const txn = await contractClient.createInvoice(invoice);
-    dispatch(
-      createInvoiceSuccess({
-        transaction: txn,
+      updateAccountSuccess({
+        account: newAccount,
+        invoicesByProvider: parsedInvoicesByProvider,
+        invoicesByClient: parsedInvoicesByClient,
       })
     );
   } catch (err) {
@@ -164,21 +168,15 @@ export const createInvoice = (invoice) => async (dispatch, getState) => {
   }
 };
 
-export const payInvoice =
-  ({ invoiceId, amounts, token, isErc721 }) =>
-  async (dispatch, getState) => {
-    dispatch(payInvoiceRequest());
+export const createInvoice =
+  (invoice: Invoice) => async (dispatch, getState) => {
+    dispatch(createInvoiceRequest());
     try {
       const state = getState();
       const { contractClient } = state.blockchain;
-      const txn = await contractClient.payInvoice({
-        invoiceId,
-        amounts,
-        token,
-        isErc721,
-      });
+      const txn = await contractClient.createInvoice(invoice);
       dispatch(
-        payInvoiceSuccess({
+        createInvoiceSuccess({
           transaction: txn,
         })
       );
@@ -187,6 +185,23 @@ export const payInvoice =
       dispatch(appError(err.message));
     }
   };
+
+export const payInvoice = (invoice: Invoice) => async (dispatch, getState) => {
+  dispatch(payInvoiceRequest());
+  try {
+    const state = getState();
+    const { contractClient } = state.blockchain;
+    const txn = await contractClient.payInvoice(invoice);
+    dispatch(
+      payInvoiceSuccess({
+        transaction: txn,
+      })
+    );
+  } catch (err) {
+    dispatch(error());
+    dispatch(appError(err.message));
+  }
+};
 
 // export const fetchData = () => async (dispatch, getState) => {
 //   dispatch(fetchDataRequest());
