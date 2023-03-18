@@ -10,7 +10,9 @@ import {
   MenuItem,
   FormControl,
   Modal,
+  InputAdornment,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { DateField } from "@mui/x-date-pickers";
 import TextField from "@mui/material/TextField";
 
@@ -24,7 +26,9 @@ import styles from "@/styles/create.module.css";
 import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
 import { networkIdToTokenSymbolToAddresses } from "@/constants";
-import { TokenType } from "@/types";
+import { Milestone, TokenType } from "@/types";
+import { ethers } from "ethers";
+import { appError, clearAppError } from "@/redux/appSlice";
 
 export default function Create() {
   const router = useRouter();
@@ -38,10 +42,12 @@ export default function Create() {
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<string | null>(null);
+  const [tokenId, setTokenId] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string | null>("WETH");
   const [tokenType, setTokenType] = useState(TokenType.ETH);
   const [tokenAddress, setTokenAddress] = useState<string | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
 
   useEffect(() => {
     dispatch(init());
@@ -57,21 +63,87 @@ export default function Create() {
     });
   }, []);
 
+  const sumMilestonePayments = () => {
+    const sum = milestones.reduce((acc, milestone) => {
+      return acc + Number(milestone.amount);
+    }, 0);
+
+    return sum.toFixed(3);
+  };
+
+  const validateInvoice = () => {
+    const errors: string[] = [];
+    if (!providerAddress) {
+      errors.push("Provider address is required.");
+    }
+    if (!ethers.utils.isAddress(providerAddress)) {
+      errors.push("Provider address is not valid.");
+    }
+    if (!clientAddress) {
+      errors.push("Client address is required.");
+    }
+    if (!ethers.utils.isAddress(clientAddress)) {
+      errors.push("Client address is not valid.");
+    }
+    if (!date) {
+      errors.push("Date is required.");
+    }
+    if (!dueDate) {
+      errors.push("Due date is required.");
+    }
+    if (dueDate && date && dueDate < date) {
+      errors.push("Due date must be after current date.");
+    }
+    if (!itemName) {
+      errors.push("Item name is required.");
+    }
+    if (!amount) {
+      errors.push("Amount is required.");
+    }
+    if (!Number(amount)) {
+      errors.push("Amount must be a number.");
+    }
+    if (tokenId && !/^\+?(0|[1-9]\d*)$/.test(tokenId)) {
+      errors.push("Token ID must be an integer.");
+    }
+    if (tokenAddress && !ethers.utils.isAddress(tokenAddress)) {
+      errors.push("Token address is not valid.");
+    }
+
+    if (errors.length) {
+      dispatch(
+        appError(
+          `Encountered the following errors while creating invoice: ${errors.join(
+            " "
+          )}`
+        )
+      );
+      return false;
+    }
+    return true;
+  };
+
   const onClickCreate = () => {
-    dispatch(
-      createInvoice({
-        providerAddress,
-        clientAddress,
-        date: date as Date,
-        dueDate: dueDate as Date,
-        itemName,
-        itemDescription,
-        amount,
-        tokenSymbol: currency,
-        tokenType,
-        tokenAddress,
-      })
-    );
+    const newInvoice = {
+      providerAddress,
+      clientAddress,
+      date: date as Date,
+      dueDate: dueDate as Date,
+      itemName,
+      itemDescription,
+      amount,
+      tokenSymbol: currency,
+      tokenId: Number(tokenId),
+      tokenType,
+      tokenAddress,
+      milestones,
+    };
+
+    const invoiceIsValid = validateInvoice();
+    if (invoiceIsValid) {
+      dispatch(clearAppError());
+      dispatch(createInvoice(newInvoice));
+    }
   };
 
   return (
@@ -168,8 +240,17 @@ export default function Create() {
                   label={tokenType === TokenType.ERC721 ? "Token ID" : "Amount"}
                   variant="standard"
                   size="small"
+                  type="number"
+                  value={amount}
+                  InputLabelProps={{ shrink: amount !== null }}
                   onChange={(event) => {
-                    setAmount(event.target.value as string);
+                    if (tokenType === TokenType.ERC721) {
+                      setTokenId(event.target.value as string);
+                      setAmount(null);
+                    } else {
+                      setAmount(event.target.value as string);
+                      setTokenId(null);
+                    }
                   }}
                 />
               </div>
@@ -218,9 +299,65 @@ export default function Create() {
             <Button
               variant="contained"
               disabled={tokenType === TokenType.ERC721}
+              onClick={() =>
+                setMilestones([
+                  ...milestones,
+                  {
+                    name: `Milestone ${milestones.length + 1} Payment`,
+                    amount: "",
+                  },
+                ])
+              }
+              sx={{ width: "300px" }}
             >
               Add milestone
             </Button>
+            <div className={styles.milestoneList}>
+              {milestones.map((milestone, index) => (
+                <div key={index} className={styles.milestoneItem}>
+                  <TextField
+                    label={`Milestone ${index + 1} Name`}
+                    defaultValue={milestone.name}
+                    variant="standard"
+                    size="small"
+                    onChange={(event) => {
+                      const newMilestones = [...milestones];
+                      newMilestones[index].name = event.target.value;
+                      setMilestones(newMilestones);
+                    }}
+                  />
+                  <TextField
+                    label="Amount"
+                    variant="standard"
+                    size="small"
+                    type="number"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          {tokenType === TokenType.ETH ? "ETH" : currency}
+                        </InputAdornment>
+                      ),
+                    }}
+                    onChange={(event) => {
+                      const newMilestones = [...milestones];
+                      newMilestones[index].amount = event.target.value;
+                      setMilestones(newMilestones);
+                      setAmount(sumMilestonePayments());
+                    }}
+                  />
+                  <div
+                    onClick={() => {
+                      const newMilestones = [...milestones];
+                      newMilestones.splice(index, 1);
+                      setMilestones(newMilestones);
+                      setAmount(sumMilestonePayments());
+                    }}
+                  >
+                    <DeleteIcon />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <Divider />
           <div className={styles.createInvoiceContainer}>

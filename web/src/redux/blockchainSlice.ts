@@ -56,6 +56,13 @@ export const blockchainSlice = createSlice({
       state.loading = false;
       state.transaction = action.payload.transaction;
     },
+    releaseFundRequest: (state) => {
+      state.loading = true;
+    },
+    releaseFundSuccess: (state, action) => {
+      state.loading = false;
+      state.transaction = action.payload.transaction;
+    },
     clearTransaction: (state) => {
       state.transaction = null;
     },
@@ -86,6 +93,8 @@ export const {
   getInvoicesSuccess,
   createInvoiceRequest,
   createInvoiceSuccess,
+  releaseFundRequest,
+  releaseFundSuccess,
   error,
   clearTransaction,
   updateAccountRequest,
@@ -181,6 +190,7 @@ export const createInvoice =
         })
       );
     } catch (err) {
+      console.log(err);
       dispatch(error());
       dispatch(appError(err.message));
     }
@@ -198,40 +208,29 @@ export const payInvoice = (invoice: Invoice) => async (dispatch, getState) => {
       })
     );
   } catch (err) {
+    console.log(err);
     dispatch(error());
     dispatch(appError(err.message));
   }
 };
 
-// export const fetchData = () => async (dispatch, getState) => {
-//   dispatch(fetchDataRequest());
-//   try {
-//     const state = getState();
-//     const { contractClient, account } = state.blockchain;
-//     const pricePerChar = await contractClient.getPricePerChar();
-//     const tokens = await contractClient.getAllTokens();
-//     const canMintWithTitle = account
-//       ? await contractClient.canMintWithTitle(
-//           BigNumber.from(tokens.length),
-//           account
-//         )
-//       : false;
-//     const stories = toStories(tokens);
-//     const numberOfOwnedTokens = account
-//       ? (await contractClient.getNumberOfOwnedTokens(account)).toNumber()
-//       : null;
-//     dispatch(
-//       fetchDataSuccess({
-//         stories,
-//         pricePerChar,
-//         numberOfOwnedTokens,
-//         canMintWithTitle,
-//       })
-//     );
-//   } catch (err) {
-//     dispatch(error());
-//     dispatch(appError(err.message));
-//   }
-// };
+export const releaseFund =
+  (invoiceId: number, releaseUntil: number) => async (dispatch, getState) => {
+    dispatch(releaseFundRequest());
+    try {
+      const state = getState();
+      const { contractClient } = state.blockchain;
+      const txn = await contractClient.release(invoiceId, releaseUntil);
+      dispatch(
+        releaseFundSuccess({
+          transaction: txn,
+        })
+      );
+    } catch (err) {
+      console.log(err);
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+  };
 
 export default blockchainSlice.reducer;

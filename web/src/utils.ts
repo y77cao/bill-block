@@ -46,8 +46,9 @@ export const parseInvoices = async (invoices): Promise<Invoice[]> => {
       tokenSymbol: metadata?.tokenSymbol,
       amount: ethers.utils.formatEther(total),
       tokenAddress: token,
+      tokenId: isErc721 ? total.toNumber() : null,
       milestones: metadata?.milestones,
-      status: InvoiceStatus[status],
+      status: status as InvoiceStatus,
       tokenType,
     };
   });

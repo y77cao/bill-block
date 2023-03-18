@@ -27,7 +27,8 @@ import {
 import styles from "@/styles/dashboard.module.css";
 import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
-import { Invoice, TokenType } from "@/types";
+import { Invoice, InvoiceStatus, TokenType } from "@/types";
+import { ReleaseFundModal } from "@/components/ReleaseFundModal";
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
@@ -48,9 +49,61 @@ export default function Dashboard() {
     });
   }, []);
 
-  const Row = (props: { row: Invoice }) => {
-    const { row } = props;
+  const Row = (props: { row: Invoice; own: boolean }) => {
+    const { row, own } = props;
     const [open, setOpen] = React.useState(false);
+    const [openModal, setOpenModal] = React.useState(false);
+
+    const getActionComponent = () => {
+      switch (row.status) {
+        case InvoiceStatus.CREATED:
+          return <></>;
+        case InvoiceStatus.FUNDED:
+          return (
+            <ReleaseFundModal
+              invoice={row}
+              open={openModal}
+              onClose={() => setOpenModal(false)}
+            />
+          );
+        case InvoiceStatus.TERMINATED:
+          return <></>;
+      }
+    };
+
+    const getActionButton = (invoice: Invoice, own: boolean) => {
+      const { status } = invoice;
+      if (own) {
+        return (
+          <Button variant="contained" onClick={() => {}}>
+            View
+          </Button>
+        );
+      }
+      switch (status) {
+        case InvoiceStatus.CREATED:
+          return (
+            <Button
+              variant="contained"
+              onClick={() => dispatch(payInvoice(invoice))}
+            >
+              Pay
+            </Button>
+          );
+        case InvoiceStatus.FUNDED:
+          return (
+            <Button variant="contained" onClick={() => setOpenModal(true)}>
+              Release Fund
+            </Button>
+          );
+        case InvoiceStatus.TERMINATED:
+          return (
+            <Button variant="contained" onClick={() => {}}>
+              View
+            </Button>
+          );
+      }
+    };
 
     return (
       <React.Fragment>
@@ -72,15 +125,8 @@ export default function Dashboard() {
             {row.tokenType === TokenType.ERC721 ? "1" : row.amount.toString()}{" "}
             {row.tokenSymbol}
           </TableCell>
-          <TableCell>{row.status}</TableCell>
-          <TableCell>
-            <Button
-              variant="contained"
-              onClick={() => dispatch(payInvoice(row))}
-            >
-              Pay
-            </Button>
-          </TableCell>
+          <TableCell>{InvoiceStatus[row.status as number]}</TableCell>
+          <TableCell>{getActionButton(row, own)}</TableCell>
         </TableRow>
         <TableRow>
           <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
@@ -89,6 +135,7 @@ export default function Dashboard() {
             </Collapse>
           </TableCell>
         </TableRow>
+        {getActionComponent()}
       </React.Fragment>
     );
   };
@@ -120,12 +167,12 @@ export default function Dashboard() {
                       <TableCell>Name</TableCell>
                       <TableCell>Amount</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Actions</TableCell>
+                      <TableCell>Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {blockchain.invoicesByProvider.map((row) => (
-                      <Row key={row.id} row={row} />
+                      <Row key={row.id} row={row} own={true} />
                     ))}
                   </TableBody>
                 </Table>
@@ -141,12 +188,12 @@ export default function Dashboard() {
                       <TableCell>Name</TableCell>
                       <TableCell>Amount</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Actions</TableCell>
+                      <TableCell>Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {blockchain.invoicesByClient.map((row) => (
-                      <Row key={row.id} row={row} />
+                      <Row key={row.id} row={row} own={false} />
                     ))}
                   </TableBody>
                 </Table>

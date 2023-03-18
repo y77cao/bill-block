@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -12,9 +13,14 @@ error IncorrectTransactionValue();
 error InvalidTerminationTime();
 error TokenUnmatch();
 error IncorrectInvoiceStatus();
+error InsufficientAllowance();
+error InvalidRelease();
+error InsufficientBalance();
+error ReleaseFailure();
+error InvoiceNotTerminated();
 
 // TODO interface
-contract InvoiceFactory is ReentrancyGuard {
+contract InvoiceFactory is ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     enum InvoiceStatus {
@@ -59,7 +65,6 @@ contract InvoiceFactory is ReentrancyGuard {
     );
     event Release(uint256 milestone, uint256 amount);
     event Withdraw(uint256 invoiceId, uint256 balance);
-    event Verified(address indexed client, address indexed invoice);
 
     function createInvoice(
         address client,
@@ -99,7 +104,6 @@ contract InvoiceFactory is ReentrancyGuard {
         providerToInvoices[provider].push(nextId);
         clientToInvoices[client].push(nextId);
 
-        // _safeMint(_client, nextId);
         invoiceCount = invoiceCount + 1;
 
         emit Created(nextId, client, provider, amounts);
@@ -186,6 +190,11 @@ contract InvoiceFactory is ReentrancyGuard {
                 );
             } else {
                 if (invoice.total != sum) revert IncorrectTransactionValue();
+                uint256 allowedToTransfer = IERC20(token).allowance(
+                    msg.sender,
+                    address(this)
+                );
+                if (allowedToTransfer < sum) revert InsufficientAllowance();
                 IERC20(token).safeTransferFrom(msg.sender, address(this), sum);
             }
         }
@@ -193,77 +202,102 @@ contract InvoiceFactory is ReentrancyGuard {
         emit Deposit(invoiceId, isErc721, msg.sender, token, amounts);
     }
 
-    // function release(uint256 invoiceId) external override nonReentrant {
-    //     if (invoiceId < 0 || invoiceId >= invoiceCount)
-    //         revert InvalidInvoiceId();
-    //     InvoiceMetadata memory invoice = invoices[invoiceId];
-    //     if (msg.sender != invoice.client) revert InvalidAddress();
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
 
-    //     uint256 currentMilestone = milestone;
-    //     uint256 balance = IERC20(token).balanceOf(address(this));
+    function release(uint256 invoiceId, uint256 releaseUntil)
+        external
+        nonReentrant
+    {
+        if (invoiceId < 0 || invoiceId >= invoiceCount)
+            revert InvalidInvoiceId();
+        InvoiceMetadata storage invoice = invoices[invoiceId];
+        if (msg.sender != invoice.client) revert InvalidAddress();
+        if (
+            invoice.currMilestone >= releaseUntil ||
+            invoice.amounts.length <= releaseUntil
+        ) revert InvalidRelease();
 
-    //     if (currentMilestone < amounts.length) {
-    //         uint256 amount = amounts[currentMilestone];
-    //         if (currentMilestone == amounts.length - 1 && amount < balance) {
-    //             amount = balance;
-    //         }
-    //         require(balance >= amount, "insufficient balance");
+        if (invoice.isErc721) {
+            IERC721(invoice.token).safeTransferFrom(
+                address(this),
+                invoice.provider,
+                invoice.amounts[0]
+            );
+            emit Release(releaseUntil, invoice.amounts[0]);
+            return;
+        }
 
-    //         milestone = milestone + 1;
-    //         IERC20(token).safeTransfer(provider, amount);
-    //         released = released + amount;
-    //         emit Release(currentMilestone, amount);
-    //     } else {
-    //         require(balance > 0, "balance is 0");
+        uint256 releaseTotal = 0;
+        for (uint256 i = invoice.currMilestone; i <= releaseUntil; ++i) {
+            releaseTotal += invoice.amounts[i];
+        }
 
-    //         IERC20(token).safeTransfer(provider, balance);
-    //         released = released + balance;
-    //         emit Release(currentMilestone, balance);
-    //     }
-    // }
+        invoice.amountReleased += releaseTotal;
+        invoice.currMilestone = releaseUntil;
 
-    // function release(uint256 invoiceId, uint256 _milestone)
-    //     external
-    //     override
-    //     nonReentrant
-    // {
-    //     // client transfers locker funds upto certain milestone to provider
-    //     require(!locked, "locked");
-    //     require(_msgSender() == client, "!client");
-    //     require(_milestone >= milestone, "milestone passed");
-    //     require(_milestone < amounts.length, "invalid milestone");
-    //     uint256 balance = IERC20(token).balanceOf(address(this));
-    //     uint256 amount = 0;
-    //     for (uint256 j = milestone; j <= _milestone; j++) {
-    //         if (j == amounts.length - 1 && amount + amounts[j] < balance) {
-    //             emit Release(j, balance - amount);
-    //             amount = balance;
-    //         } else {
-    //             emit Release(j, amounts[j]);
-    //             amount = amount + amounts[j];
-    //         }
-    //     }
-    //     require(balance >= amount, "insufficient balance");
+        if (invoice.token == address(0)) {
+            if (address(this).balance < releaseTotal)
+                revert InsufficientBalance();
+            (bool sent, ) = invoice.provider.call{value: releaseTotal}("");
+            if (!sent) revert ReleaseFailure();
+        } else {
+            uint256 balance = IERC20(invoice.token).balanceOf(address(this));
+            if (balance < releaseTotal) revert InsufficientBalance();
+            IERC20(invoice.token).safeTransfer(invoice.provider, releaseTotal);
+        }
 
-    //     IERC20(token).safeTransfer(provider, amount);
-    //     released = released + amount;
-    //     milestone = _milestone + 1;
-    // }
+        emit Release(releaseUntil, releaseTotal);
+    }
 
-    // // withdraw locker remainder to client if termination time passes & no lock
-    // function withdraw(uint256 invoiceId) external override nonReentrant {
-    //     if (invoiceId < 0 || invoiceId >= invoiceCount)
-    //         revert InvalidInvoiceId();
-    //     InvoiceMetadata memory invoice = invoices[invoiceId];
-    //     if (msg.sender != invoice.client) revert InvalidAddress();
-    //     require(block.timestamp > terminationTime, "!terminated");
-    //     uint256 balance = IERC20(invoice.token).balanceOf(invoice.client);
-    //     require(balance > 0, "balance is 0");
+    // withdraw locker remainder to client if termination time passes
+    function withdraw(uint256 invoiceId) external nonReentrant {
+        if (invoiceId < 0 || invoiceId >= invoiceCount)
+            revert InvalidInvoiceId();
+        InvoiceMetadata memory invoice = invoices[invoiceId];
+        if (msg.sender != invoice.client) revert InvalidAddress();
+        if (block.timestamp > invoice.terminationTime)
+            revert InvoiceNotTerminated();
 
-    //     // TODO: erc721
-    //     IERC20(token).safeTransfer(client, balance);
-    //     milestone = amounts.length;
+        if (invoice.isErc721) {
+            if (invoice.amountReleased == 0) {
+                invoice.amountReleased = invoice.amounts[0];
+                invoice.currMilestone = invoice.amounts.length - 1;
+                IERC721(invoice.token).safeTransferFrom(
+                    address(this),
+                    invoice.client,
+                    invoice.amounts[0]
+                );
+            }
+            emit Withdraw(invoiceId, invoice.amounts[0]);
+            return;
+        }
 
-    //     emit Withdraw(invoiceId, balance);
-    // }
+        uint256 withdrawTotal = 0;
+        for (
+            uint256 i = invoice.currMilestone;
+            i < invoice.amounts.length;
+            ++i
+        ) {
+            withdrawTotal += invoice.amounts[i];
+        }
+
+        if (invoice.token == address(0)) {
+            if (address(this).balance < withdrawTotal)
+                revert InsufficientBalance();
+            (bool sent, ) = invoice.client.call{value: withdrawTotal}("");
+            if (!sent) revert ReleaseFailure();
+        } else {
+            uint256 balance = IERC20(invoice.token).balanceOf(address(this));
+            if (balance < withdrawTotal) revert InsufficientBalance();
+            IERC20(invoice.token).safeTransfer(invoice.client, withdrawTotal);
+        }
+        emit Withdraw(invoiceId, withdrawTotal);
+    }
 }

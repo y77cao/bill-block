@@ -7,8 +7,9 @@ export type Invoice = {
   itemName: string;
   itemDescription?: string;
   tokenSymbol: string | null;
-  amount: string;
+  amount: string | null;
   tokenAddress: string | null;
+  tokenId: number | null;
   milestones?: Milestone[];
   status?: InvoiceStatus;
   tokenType: TokenType;

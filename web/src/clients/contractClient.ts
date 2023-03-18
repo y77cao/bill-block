@@ -90,44 +90,45 @@ export class ContractClient {
     const contractWithSigner = this.contract.connect(signer);
 
     const {
-      clientAddress,
-      providerAddress,
       date,
       dueDate,
       itemName,
       itemDescription,
       tokenSymbol,
-      amount,
       tokenAddress,
       milestones,
       tokenType,
     } = invoice;
 
-    const amountInWei = ethers.utils.parseEther(amount);
-    const epochDate = Math.round(dueDate.getTime() / 1000);
-    const epochDueDate = Math.round(dueDate.getTime() / 1000);
-
-    const nonEthTokenAddress =
-      tokenAddress || getTokenAddressFromSymbol(tokenSymbol as string);
-    const invoiceTokenAddress =
-      tokenType === TokenType.ETH
-        ? ethers.constants.AddressZero
-        : nonEthTokenAddress;
-
     const invoiceTokenSymbol =
       tokenSymbol ||
       (await getTokenSymbolFromAddress(tokenAddress as string, this.provider));
 
-    const txn = await contractWithSigner.createInvoice(
-      clientAddress,
-      providerAddress,
-      invoiceTokenAddress,
-      [amountInWei],
-      epochDueDate,
-      tokenType === TokenType.ERC721 // isErc721
-    );
-    const receipt = await txn.wait();
-    const invoiceId = receipt?.events[0]?.args?.id?.toNumber();
+    let createInvoiceResult;
+    switch (tokenType) {
+      case TokenType.ETH:
+        createInvoiceResult = await this.createForETH(
+          invoice,
+          contractWithSigner
+        );
+        break;
+      case TokenType.ERC20:
+        createInvoiceResult = await this.createForERC20(
+          invoice,
+          contractWithSigner
+        );
+        break;
+      case TokenType.ERC721:
+        createInvoiceResult = await this.createForERC721(
+          invoice,
+          contractWithSigner
+        );
+        break;
+      default:
+        throw new Error("Invalid token type");
+    }
+
+    const { invoiceId, txn } = createInvoiceResult;
 
     // TODO move to be called by redux?? hacky af
     LocalStorageClient.set(invoiceId, {
@@ -137,34 +138,148 @@ export class ContractClient {
       itemName,
       itemDescription,
       tokenSymbol: tokenType === TokenType.ETH ? "ETH" : invoiceTokenSymbol,
-      milestones: [], // TODO,
+      milestones,
     });
 
     return txn;
+  }
+
+  private async createForETH(invoice: Invoice, contractWithSigner) {
+    const { clientAddress, providerAddress, dueDate, amount, milestones } =
+      invoice;
+    const amountInWei = ethers.utils.parseEther(amount as string);
+    const milestonesInWei = milestones
+      ? milestones.map((milestone) => ethers.utils.parseEther(milestone.amount))
+      : null;
+    const epochDueDate = Math.round(dueDate.getTime() / 1000);
+
+    const txn = await contractWithSigner.createInvoice(
+      clientAddress,
+      providerAddress,
+      ethers.constants.AddressZero,
+      milestonesInWei ? milestonesInWei : [amountInWei],
+      epochDueDate,
+      false // isErc721
+    );
+    const receipt = await txn.wait();
+    const invoiceId = receipt?.events[0]?.args?.id?.toNumber();
+
+    return { txn, invoiceId };
+  }
+
+  private async createForERC20(invoice: Invoice, contractWithSigner) {
+    const {
+      clientAddress,
+      providerAddress,
+      dueDate,
+      amount,
+      tokenAddress,
+      tokenSymbol,
+      milestones,
+    } = invoice;
+    // 18 DECIMALS ASSUMED
+    const amountInWei = ethers.utils.parseEther(amount as string);
+    const milestonesInWei = milestones
+      ? milestones.map((milestone) => ethers.utils.parseEther(milestone.amount))
+      : null;
+    const epochDueDate = Math.round(dueDate.getTime() / 1000);
+    const nonEthTokenAddress =
+      tokenAddress || getTokenAddressFromSymbol(tokenSymbol as string);
+    const txn = await contractWithSigner.createInvoice(
+      clientAddress,
+      providerAddress,
+      nonEthTokenAddress,
+      milestonesInWei ? milestonesInWei : [amountInWei],
+      epochDueDate,
+      false // isErc721
+    );
+    const receipt = await txn.wait();
+    const invoiceId = receipt?.events[0]?.args?.id?.toNumber();
+
+    return { txn, invoiceId };
+  }
+
+  private async createForERC721(invoice: Invoice, contractWithSigner) {
+    const {
+      clientAddress,
+      providerAddress,
+      dueDate,
+      tokenId,
+      tokenAddress,
+      tokenSymbol,
+    } = invoice;
+    const epochDueDate = Math.round(dueDate.getTime() / 1000);
+    const nonEthTokenAddress =
+      tokenAddress || getTokenAddressFromSymbol(tokenSymbol as string);
+    const txn = await contractWithSigner.createInvoice(
+      clientAddress,
+      providerAddress,
+      nonEthTokenAddress,
+      [tokenId],
+      epochDueDate,
+      true // isErc721
+    );
+    const receipt = await txn.wait();
+    const invoiceId = receipt?.events[0]?.args?.id?.toNumber();
+
+    return { txn, invoiceId };
   }
 
   async payInvoice(invoice: Invoice) {
     const signer = this.provider.getSigner();
     const contractWithSigner = this.contract.connect(signer);
 
-    const { id, amount, tokenAddress, tokenType } = invoice;
-    const amountInWei = ethers.utils.parseEther(amount);
-    // const amountsInWei = amounts.map((amount) =>
-    //   ethers.utils.parseEther(amount)
-    // );
-
-    if (tokenType === TokenType.ERC20) {
-      await this.erc20Approve(amountInWei, tokenAddress as string);
-    } else if (tokenType === TokenType.ERC721) {
-      await this.erc721Approve(amount, tokenAddress as string);
+    const { tokenType } = invoice;
+    switch (tokenType) {
+      case TokenType.ETH:
+        return this.payForETH(invoice, contractWithSigner);
+      case TokenType.ERC20:
+        return this.payForERC20(invoice, contractWithSigner);
+      case TokenType.ERC721:
+        return this.payForERC721(invoice, contractWithSigner);
     }
+  }
+
+  private async payForETH(invoice: Invoice, contractWithSigner) {
+    const { id, amount } = invoice;
+    const amountInWei = ethers.utils.parseEther(amount as string);
+    const txn = await contractWithSigner.deposit(
+      id,
+      ethers.constants.AddressZero,
+      [amountInWei],
+      false, // isErc721
+      { value: amountInWei }
+    );
+    await txn.wait();
+    return txn;
+  }
+
+  private async payForERC20(invoice: Invoice, contractWithSigner) {
+    const { id, amount, tokenAddress } = invoice;
+    const amountInWei = ethers.utils.parseEther(amount as string);
+
+    await this.erc20Approve(amountInWei, tokenAddress as string);
 
     const txn = await contractWithSigner.deposit(
       id,
       tokenAddress,
       [amountInWei],
-      tokenType === TokenType.ERC721, // isErc721
-      { value: tokenType === TokenType.ETH ? amountInWei : 0 }
+      false // isErc721
+    );
+    await txn.wait();
+    return txn;
+  }
+
+  private async payForERC721(invoice: Invoice, contractWithSigner) {
+    const { id, tokenId, tokenAddress } = invoice;
+
+    await this.erc721Approve(tokenId as number, tokenAddress as string);
+
+    const txn = await contractWithSigner.deposit(
+      id,
+      tokenAddress,
+      [tokenId],
+      true // isErc721
     );
     await txn.wait();
     return txn;
@@ -178,7 +293,7 @@ export class ContractClient {
     return txn;
   }
 
-  private async erc721Approve(tokenId: string, tokenAddress: string) {
+  private async erc721Approve(tokenId: number, tokenAddress: string) {
     const signer = this.provider.getSigner();
     const tokenContract = new ethers.Contract(tokenAddress, ERC721, signer);
     const txn = await tokenContract.approve(this.contract.address, tokenId);

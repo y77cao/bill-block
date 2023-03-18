@@ -71,6 +71,18 @@
   display: flex;
   margin: 20px;
   justify-content: space-between;
+  flex-direction: column;
+}
+
+.milestoneItem {
+  display: flex;
+  justify-content: start;
+  margin: 20px 0;
+  align-items: end;
+}
+
+.milestoneItem > * {
+  margin: 0 10px;
 }
 
 .createInvoiceContainer {
