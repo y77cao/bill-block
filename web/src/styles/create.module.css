@@ -6,6 +6,7 @@
 
 .invoiceContainer {
   width: 800px;
+  padding: 20px;
 }
 
 .invoiceTitle {
@@ -98,8 +99,8 @@
 }
 
 .modalContainer {
-  width: 400px;
-  height: 200px;
+  width: 500px;
+  height: 400px;
   position: absolute;
   top: 0;
   bottom: 0;
@@ -111,10 +112,23 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-around;
+  border-radius: 3px;
+}
+
+.modalContainer > * {
+  padding: 0 50px;
+  text-align: center;
+}
+
+.linkContainer {
+  width: 60%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .buttonContainer {
   display: flex;
   justify-content: space-around;
-  width: 90%;
+  width: 70%;
 }

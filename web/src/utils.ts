@@ -48,6 +48,7 @@ export const parseInvoices = async (invoices): Promise<Invoice[]> => {
       tokenAddress: token,
       tokenId: isErc721 ? total.toNumber() : null,
       milestones: metadata?.milestones,
+      currMilestone: currMilestone.toNumber(),
       status: status as InvoiceStatus,
       tokenType,
     };

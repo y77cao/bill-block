@@ -15,13 +15,12 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DateField } from "@mui/x-date-pickers";
 import TextField from "@mui/material/TextField";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
-import {
-  clearTransaction,
-  createInvoice,
-  init,
-  updateAccountData,
-} from "../redux/blockchainSlice";
+import { clearTransaction, createInvoice } from "@/redux/createSlice";
+import { init, updateAccountData } from "@/redux/accountSlice";
+
 import styles from "@/styles/create.module.css";
 import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
@@ -34,7 +33,7 @@ export default function Create() {
   const router = useRouter();
 
   const dispatch = useDispatch<AppDispatch>();
-  const blockchain = useSelector((state) => state.blockchain);
+  const create = useSelector((state) => state.create);
 
   const [providerAddress, setProviderAddress] = useState("");
   const [clientAddress, setClientAddress] = useState("");
@@ -150,7 +149,7 @@ export default function Create() {
     <div>
       <PageHeader />
       <div className={styles.createContainer}>
-        <Paper elevation={3} square className={styles.invoiceContainer}>
+        <Paper elevation={10} className={styles.invoiceContainer}>
           <div className={styles.invoiceTitle}>INVOICE</div>
           <div className={styles.invoiceTop}>
             <div className={styles.invoiceTopRight}>
@@ -317,7 +316,7 @@ export default function Create() {
                 <div key={index} className={styles.milestoneItem}>
                   <TextField
                     label={`Milestone ${index + 1} Name`}
-                    defaultValue={milestone.name}
+                    value={milestone.name}
                     variant="standard"
                     size="small"
                     onChange={(event) => {
@@ -331,6 +330,7 @@ export default function Create() {
                     variant="standard"
                     size="small"
                     type="number"
+                    value={milestone.amount}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -353,7 +353,7 @@ export default function Create() {
                       setAmount(sumMilestonePayments());
                     }}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon color="primary" />
                   </div>
                 </div>
               ))}
@@ -370,11 +370,34 @@ export default function Create() {
         </Paper>
       </div>
       <Modal
-        open={blockchain.transaction != null}
+        open={create.transaction !== null}
         onClose={() => dispatch(clearTransaction())}
       >
         <div className={styles.modalContainer}>
-          <>Invoice created successfully!</>
+          <div>
+            <CheckCircleOutlineIcon color="secondary" sx={{ fontSize: 80 }} />
+          </div>
+          <div>
+            Invoice #{create.invoiceId} created successfully! You can share your
+            invoice using the link below
+          </div>
+          <div className={styles.linkContainer}>
+            <TextField
+              disabled
+              sx={{ width: "270px" }}
+              value={`${process.env.NEXT_PUBLIC_BASE_URL}/pay/${create.invoiceId}`}
+            />
+            <ContentCopyIcon
+              sx={{ cursor: "pointer" }}
+              color="secondary"
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  `${process.env.NEXT_PUBLIC_BASE_URL}/pay/${create.invoiceId}`
+                )
+              }
+            />
+          </div>
+
           <div className={styles.buttonContainer}>
             <Button
               variant="contained"

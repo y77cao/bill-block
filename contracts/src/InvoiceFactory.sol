@@ -26,6 +26,8 @@ contract InvoiceFactory is ReentrancyGuard, IERC721Receiver {
     enum InvoiceStatus {
         CREATED,
         FUNDED,
+        PARTIALLY_PAID,
+        PAID,
         TERMINATED
     }
     uint256 public constant MAX_TERMINATION_TIME = 63113904; // 2-year
@@ -221,10 +223,17 @@ contract InvoiceFactory is ReentrancyGuard, IERC721Receiver {
         if (msg.sender != invoice.client) revert InvalidAddress();
         if (
             invoice.currMilestone >= releaseUntil ||
-            invoice.amounts.length <= releaseUntil
+            invoice.amounts.length < releaseUntil ||
+            releaseUntil < 1
         ) revert InvalidRelease();
 
+        invoice.status = releaseUntil == invoice.amounts.length
+            ? InvoiceStatus.PAID
+            : InvoiceStatus.PARTIALLY_PAID;
+
         if (invoice.isErc721) {
+            invoice.amountReleased += invoice.amounts[0];
+            invoice.currMilestone = releaseUntil;
             IERC721(invoice.token).safeTransferFrom(
                 address(this),
                 invoice.provider,
@@ -235,7 +244,7 @@ contract InvoiceFactory is ReentrancyGuard, IERC721Receiver {
         }
 
         uint256 releaseTotal = 0;
-        for (uint256 i = invoice.currMilestone; i <= releaseUntil; ++i) {
+        for (uint256 i = invoice.currMilestone; i < releaseUntil; ++i) {
             releaseTotal += invoice.amounts[i];
         }
 
@@ -260,15 +269,17 @@ contract InvoiceFactory is ReentrancyGuard, IERC721Receiver {
     function withdraw(uint256 invoiceId) external nonReentrant {
         if (invoiceId < 0 || invoiceId >= invoiceCount)
             revert InvalidInvoiceId();
-        InvoiceMetadata memory invoice = invoices[invoiceId];
+        InvoiceMetadata storage invoice = invoices[invoiceId];
         if (msg.sender != invoice.client) revert InvalidAddress();
         if (block.timestamp > invoice.terminationTime)
             revert InvoiceNotTerminated();
 
+        invoice.status = InvoiceStatus.TERMINATED;
+
         if (invoice.isErc721) {
             if (invoice.amountReleased == 0) {
                 invoice.amountReleased = invoice.amounts[0];
-                invoice.currMilestone = invoice.amounts.length - 1;
+                invoice.currMilestone = invoice.amounts.length;
                 IERC721(invoice.token).safeTransferFrom(
                     address(this),
                     invoice.client,
@@ -287,6 +298,9 @@ contract InvoiceFactory is ReentrancyGuard, IERC721Receiver {
         ) {
             withdrawTotal += invoice.amounts[i];
         }
+
+        invoice.currMilestone = invoice.amounts.length;
+        invoice.amountReleased = invoice.total;
 
         if (invoice.token == address(0)) {
             if (address(this).balance < withdrawTotal)

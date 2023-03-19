@@ -4,7 +4,7 @@ import { useDispatch, connect } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 
 import styles from "../styles/PageHeader.module.css";
-import { connectWallet } from "@/redux/blockchainSlice";
+import { connectWallet } from "@/redux/accountSlice";
 import { clearAppError } from "@/redux/appSlice";
 
 const PageHeader = ({ account, error }) => {
@@ -12,7 +12,7 @@ const PageHeader = ({ account, error }) => {
   return (
     <div className={styles.headerContainer}>
       <div className={styles.topContainer}>
-        <div>BILLBLOCK</div>
+        <div className={styles.logoContainer}>BILLBLOCK</div>
         <Button
           variant="contained"
           onClick={() => {
@@ -34,7 +34,7 @@ const PageHeader = ({ account, error }) => {
 };
 
 const mapStateToProps = (state, ownProps) => ({
-  account: state.blockchain.account,
+  account: state.account.account,
   error: state.app.errorMsg,
   ...ownProps,
 });

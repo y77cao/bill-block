@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 
-import { init, updateAccountData } from "../redux/blockchainSlice";
+import { init, updateAccountData } from "@/redux/accountSlice";
 import styles from "../styles/index.module.css";
 import PageHeader from "@/components/PageHeader";
 
@@ -12,10 +12,6 @@ export default function Home() {
   const router = useRouter();
 
   const dispatch = useDispatch<AppDispatch>();
-  // @ts-ignore
-  const blockchain = useSelector((state) => state.blockchain);
-  // @ts-ignore
-  const app = useSelector((state) => state.app);
 
   useEffect(() => {
     dispatch(init());

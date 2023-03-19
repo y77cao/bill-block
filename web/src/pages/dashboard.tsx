@@ -9,21 +9,19 @@ import {
   TableRow,
   TableCell,
   TableBody,
-  IconButton,
-  Collapse,
   Modal,
   Box,
   Tab,
 } from "@mui/material";
 import { TabContext, TabList, TabPanel } from "@mui/lab";
-import { KeyboardArrowUp, KeyboardArrowDown } from "@mui/icons-material";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import {
+  ActionType,
   clearTransaction,
-  init,
   payInvoice,
-  updateAccountData,
-} from "../redux/blockchainSlice";
+} from "@/redux/dashboardSlice";
+import { init, updateAccountData } from "@/redux/accountSlice";
 import styles from "@/styles/dashboard.module.css";
 import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
@@ -32,7 +30,7 @@ import { ReleaseFundModal } from "@/components/ReleaseFundModal";
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
-  const blockchain = useSelector((state) => state.blockchain);
+  const dashboard = useSelector((state) => state.dashboard);
 
   const [tabValue, setTabValue] = useState("1");
 
@@ -59,6 +57,7 @@ export default function Dashboard() {
         case InvoiceStatus.CREATED:
           return <></>;
         case InvoiceStatus.FUNDED:
+        case InvoiceStatus.PARTIALLY_PAID:
           return (
             <ReleaseFundModal
               invoice={row}
@@ -66,6 +65,7 @@ export default function Dashboard() {
               onClose={() => setOpenModal(false)}
             />
           );
+        case InvoiceStatus.PAID:
         case InvoiceStatus.TERMINATED:
           return <></>;
       }
@@ -91,11 +91,13 @@ export default function Dashboard() {
             </Button>
           );
         case InvoiceStatus.FUNDED:
+        case InvoiceStatus.PARTIALLY_PAID:
           return (
             <Button variant="contained" onClick={() => setOpenModal(true)}>
               Release Fund
             </Button>
           );
+        case InvoiceStatus.PAID:
         case InvoiceStatus.TERMINATED:
           return (
             <Button variant="contained" onClick={() => {}}>
@@ -108,15 +110,6 @@ export default function Dashboard() {
     return (
       <React.Fragment>
         <TableRow sx={{ "& > *": { borderBottom: "unset" } }}>
-          <TableCell>
-            <IconButton
-              aria-label="expand row"
-              size="small"
-              onClick={() => setOpen(!open)}
-            >
-              {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-            </IconButton>
-          </TableCell>
           <TableCell component="th" scope="row">
             {row.id}
           </TableCell>
@@ -128,13 +121,6 @@ export default function Dashboard() {
           <TableCell>{InvoiceStatus[row.status as number]}</TableCell>
           <TableCell>{getActionButton(row, own)}</TableCell>
         </TableRow>
-        <TableRow>
-          <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-            <Collapse in={open} timeout="auto" unmountOnExit>
-              <div>hi</div>
-            </Collapse>
-          </TableCell>
-        </TableRow>
         {getActionComponent()}
       </React.Fragment>
     );
@@ -144,25 +130,27 @@ export default function Dashboard() {
     <div>
       <PageHeader />
       <div className={styles.dashboardContainer}>
-        <Paper elevation={3} square className={styles.dashboardInnerContainer}>
+        <Paper elevation={5} className={styles.dashboardInnerContainer}>
           <TabContext value={tabValue}>
             <Box
               sx={{ borderBottom: 1, borderColor: "divider", width: "100%" }}
             >
               <TabList
                 onChange={(event, newValue) => setTabValue(newValue)}
-                aria-label="lab API tabs example"
+                centered
               >
                 <Tab label="My Invoices" value="1" />
                 <Tab label="Invoices Sent to Me" value="2" />
               </TabList>
             </Box>
-            <TabPanel value="1" sx={{ width: "100%" }}>
+            <TabPanel
+              value="1"
+              sx={{ width: "90%", marginLeft: "auto", marginRight: "auto" }}
+            >
               <TableContainer>
-                <Table aria-label="collapsible table">
+                <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell />
                       <TableCell>Invoice #</TableCell>
                       <TableCell>Name</TableCell>
                       <TableCell>Amount</TableCell>
@@ -171,19 +159,21 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {blockchain.invoicesByProvider.map((row) => (
+                    {dashboard.invoicesByProvider.map((row) => (
                       <Row key={row.id} row={row} own={true} />
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
             </TabPanel>
-            <TabPanel value="2" sx={{ width: "100%" }}>
+            <TabPanel
+              value="2"
+              sx={{ width: "90%", marginLeft: "auto", marginRight: "auto" }}
+            >
               <TableContainer>
-                <Table aria-label="collapsible table">
+                <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell />
                       <TableCell>Invoice #</TableCell>
                       <TableCell>Name</TableCell>
                       <TableCell>Amount</TableCell>
@@ -192,7 +182,7 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {blockchain.invoicesByClient.map((row) => (
+                    {dashboard.invoicesByClient.map((row) => (
                       <Row key={row.id} row={row} own={false} />
                     ))}
                   </TableBody>
@@ -203,11 +193,18 @@ export default function Dashboard() {
         </Paper>
       </div>
       <Modal
-        open={blockchain.transaction != null}
+        open={dashboard.transaction != null}
         onClose={() => dispatch(clearTransaction())}
       >
         <div className={styles.modalContainer}>
-          <>Invoice paid successfully!</>
+          <div>
+            <CheckCircleOutlineIcon color="secondary" sx={{ fontSize: 80 }} />
+          </div>
+          <>
+            {dashboard.actionType === ActionType.PAY
+              ? "Invoice paid successfully!"
+              : "Fund released successfully!"}
+          </>
           <div className={styles.buttonContainer}>
             <Button
               variant="contained"

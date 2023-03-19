@@ -1,10 +1,14 @@
 import { configureStore } from "@reduxjs/toolkit";
-import blockchainReducer from "./blockchainSlice";
+import accountReducer from "./accountSlice";
+import dashboardReducer from "./dashboardSlice";
+import createInvoiceReducer from "./createSlice";
 import appReducer from "./appSlice";
 
 export const store = configureStore({
   reducer: {
-    blockchain: blockchainReducer,
+    account: accountReducer,
+    dashboard: dashboardReducer,
+    create: createInvoiceReducer,
     app: appReducer,
   },
   middleware: (getDefaultMiddleware) =>

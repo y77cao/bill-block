@@ -41,8 +41,15 @@ export class ContractClient {
       InvoiceFactory,
       provider
     );
+    const accounts = await ethereum.request({
+      method: "eth_accounts",
+    });
 
-    return { provider, contract };
+    return {
+      provider,
+      contract,
+      account: accounts.length ? accounts[0] : null,
+    };
   }
   static async connectWallet() {
     // @ts-ignore checked below
@@ -141,14 +148,14 @@ export class ContractClient {
       milestones,
     });
 
-    return txn;
+    return createInvoiceResult;
   }
 
   private async createForETH(invoice: Invoice, contractWithSigner) {
     const { clientAddress, providerAddress, dueDate, amount, milestones } =
       invoice;
     const amountInWei = ethers.utils.parseEther(amount as string);
-    const milestonesInWei = milestones
+    const milestonesInWei = milestones?.length
       ? milestones.map((milestone) => ethers.utils.parseEther(milestone.amount))
       : null;
     const epochDueDate = Math.round(dueDate.getTime() / 1000);
@@ -179,7 +186,7 @@ export class ContractClient {
     } = invoice;
     // 18 DECIMALS ASSUMED
     const amountInWei = ethers.utils.parseEther(amount as string);
-    const milestonesInWei = milestones
+    const milestonesInWei = milestones?.length
       ? milestones.map((milestone) => ethers.utils.parseEther(milestone.amount))
       : null;
     const epochDueDate = Math.round(dueDate.getTime() / 1000);
@@ -250,6 +257,16 @@ export class ContractClient {
       false, // isErc721
       { value: amountInWei }
     );
+    await txn.wait();
+    return txn;
+  }
+
+  async release(invoiceId: number, releaseUntil: number) {
+    console.log({ invoiceId, releaseUntil });
+    const signer = this.provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+
+    const txn = await contractWithSigner.release(invoiceId, releaseUntil);
     await txn.wait();
     return txn;
   }

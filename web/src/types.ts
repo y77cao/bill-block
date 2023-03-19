@@ -11,6 +11,7 @@ export type Invoice = {
   tokenAddress: string | null;
   tokenId: number | null;
   milestones?: Milestone[];
+  currMilestone?: number;
   status?: InvoiceStatus;
   tokenType: TokenType;
 };
@@ -23,6 +24,8 @@ export type Milestone = {
 export enum InvoiceStatus {
   CREATED = 0,
   FUNDED,
+  PARTIALLY_PAID,
+  PAID,
   TERMINATED,
 }
 
