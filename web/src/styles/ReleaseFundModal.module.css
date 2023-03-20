@@ -20,6 +20,11 @@
   width: 400px;
 }
 
+.checkboxGroupContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 .buttonContainer {
   display: flex;
   justify-content: space-around;

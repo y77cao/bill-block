@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import accountReducer from "./accountSlice";
 import dashboardReducer from "./dashboardSlice";
 import createInvoiceReducer from "./createSlice";
+import payReducer from "./paySlice";
 import appReducer from "./appSlice";
 
 export const store = configureStore({
@@ -9,6 +10,7 @@ export const store = configureStore({
     account: accountReducer,
     dashboard: dashboardReducer,
     create: createInvoiceReducer,
+    pay: payReducer,
     app: appReducer,
   },
   middleware: (getDefaultMiddleware) =>

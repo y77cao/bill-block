@@ -84,6 +84,10 @@ export class ContractClient {
     return txn;
   }
 
+  async getInvoiceById(id: number) {
+    return this.contract.getInvoice(id);
+  }
+
   async getInvoicesByProvider(providerAddress: string) {
     return this.contract.getInvoicesByProvider(providerAddress);
   }

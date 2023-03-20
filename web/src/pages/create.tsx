@@ -12,6 +12,7 @@ import {
   Modal,
   InputAdornment,
 } from "@mui/material";
+import { LoadingButton } from "@mui/lab";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DateField } from "@mui/x-date-pickers";
 import TextField from "@mui/material/TextField";
@@ -35,8 +36,12 @@ export default function Create() {
   const dispatch = useDispatch<AppDispatch>();
   const create = useSelector((state) => state.create);
 
-  const [providerAddress, setProviderAddress] = useState("");
-  const [clientAddress, setClientAddress] = useState("");
+  const [providerAddress, setProviderAddress] = useState(
+    "0x00057dbAb8216b5259C581fe37A43C66245d8584"
+  );
+  const [clientAddress, setClientAddress] = useState(
+    "0x8C6C58Cf5ab8719a4B86AdE698A7871c820a272d"
+  );
   const [date, setDate] = useState<Date | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [itemName, setItemName] = useState("");
@@ -96,11 +101,17 @@ export default function Create() {
     if (!itemName) {
       errors.push("Item name is required.");
     }
-    if (!amount) {
+    if (tokenType !== TokenType.ERC721 && !amount) {
       errors.push("Amount is required.");
     }
-    if (!Number(amount)) {
+    if (amount && !Number(amount)) {
       errors.push("Amount must be a number.");
+    }
+    if (tokenType === TokenType.ERC721 && !tokenId) {
+      errors.push("Token ID is required.");
+    }
+    if (tokenType === TokenType.ERC721 && !tokenAddress) {
+      errors.push("Token address is required.");
     }
     if (tokenId && !/^\+?(0|[1-9]\d*)$/.test(tokenId)) {
       errors.push("Token ID must be an integer.");
@@ -223,7 +234,11 @@ export default function Create() {
                     value={tokenType}
                     label="Token"
                     onChange={(event) => {
-                      setTokenType(event.target.value as TokenType);
+                      const tokenType = event.target.value as TokenType;
+                      setTokenType(tokenType);
+                      if (tokenType === TokenType.ERC721) {
+                        setMilestones([]);
+                      }
                     }}
                   >
                     <MenuItem value={TokenType.ETH}>{TokenType.ETH}</MenuItem>
@@ -362,9 +377,14 @@ export default function Create() {
           <Divider />
           <div className={styles.createInvoiceContainer}>
             <div>
-              <Button variant="contained" fullWidth onClick={onClickCreate}>
+              <LoadingButton
+                variant="contained"
+                loading={create.loading}
+                fullWidth
+                onClick={onClickCreate}
+              >
                 Create Invoice
-              </Button>
+              </LoadingButton>
             </div>
           </div>
         </Paper>

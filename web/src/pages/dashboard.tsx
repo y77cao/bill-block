@@ -19,6 +19,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import {
   ActionType,
   clearTransaction,
+  getInvoices,
   payInvoice,
 } from "@/redux/dashboardSlice";
 import { init, updateAccountData } from "@/redux/accountSlice";
@@ -27,6 +28,7 @@ import PageHeader from "@/components/PageHeader";
 import { AppDispatch } from "@/redux/store";
 import { Invoice, InvoiceStatus, TokenType } from "@/types";
 import { ReleaseFundModal } from "@/components/ReleaseFundModal";
+import { DashboardRow } from "@/components/DashboardRow";
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
@@ -46,85 +48,6 @@ export default function Dashboard() {
       dispatch(init());
     });
   }, []);
-
-  const Row = (props: { row: Invoice; own: boolean }) => {
-    const { row, own } = props;
-    const [open, setOpen] = React.useState(false);
-    const [openModal, setOpenModal] = React.useState(false);
-
-    const getActionComponent = () => {
-      switch (row.status) {
-        case InvoiceStatus.CREATED:
-          return <></>;
-        case InvoiceStatus.FUNDED:
-        case InvoiceStatus.PARTIALLY_PAID:
-          return (
-            <ReleaseFundModal
-              invoice={row}
-              open={openModal}
-              onClose={() => setOpenModal(false)}
-            />
-          );
-        case InvoiceStatus.PAID:
-        case InvoiceStatus.TERMINATED:
-          return <></>;
-      }
-    };
-
-    const getActionButton = (invoice: Invoice, own: boolean) => {
-      const { status } = invoice;
-      if (own) {
-        return (
-          <Button variant="contained" onClick={() => {}}>
-            View
-          </Button>
-        );
-      }
-      switch (status) {
-        case InvoiceStatus.CREATED:
-          return (
-            <Button
-              variant="contained"
-              onClick={() => dispatch(payInvoice(invoice))}
-            >
-              Pay
-            </Button>
-          );
-        case InvoiceStatus.FUNDED:
-        case InvoiceStatus.PARTIALLY_PAID:
-          return (
-            <Button variant="contained" onClick={() => setOpenModal(true)}>
-              Release Fund
-            </Button>
-          );
-        case InvoiceStatus.PAID:
-        case InvoiceStatus.TERMINATED:
-          return (
-            <Button variant="contained" onClick={() => {}}>
-              View
-            </Button>
-          );
-      }
-    };
-
-    return (
-      <React.Fragment>
-        <TableRow sx={{ "& > *": { borderBottom: "unset" } }}>
-          <TableCell component="th" scope="row">
-            {row.id}
-          </TableCell>
-          <TableCell>{row.itemName}</TableCell>
-          <TableCell>
-            {row.tokenType === TokenType.ERC721 ? "1" : row.amount.toString()}{" "}
-            {row.tokenSymbol}
-          </TableCell>
-          <TableCell>{InvoiceStatus[row.status as number]}</TableCell>
-          <TableCell>{getActionButton(row, own)}</TableCell>
-        </TableRow>
-        {getActionComponent()}
-      </React.Fragment>
-    );
-  };
 
   return (
     <div>
@@ -160,7 +83,7 @@ export default function Dashboard() {
                   </TableHead>
                   <TableBody>
                     {dashboard.invoicesByProvider.map((row) => (
-                      <Row key={row.id} row={row} own={true} />
+                      <DashboardRow key={row.id} row={row} own={true} />
                     ))}
                   </TableBody>
                 </Table>
@@ -183,7 +106,7 @@ export default function Dashboard() {
                   </TableHead>
                   <TableBody>
                     {dashboard.invoicesByClient.map((row) => (
-                      <Row key={row.id} row={row} own={false} />
+                      <DashboardRow key={row.id} row={row} own={false} />
                     ))}
                   </TableBody>
                 </Table>
@@ -194,7 +117,10 @@ export default function Dashboard() {
       </div>
       <Modal
         open={dashboard.transaction != null}
-        onClose={() => dispatch(clearTransaction())}
+        onClose={() => {
+          dispatch(clearTransaction());
+          dispatch(getInvoices());
+        }}
       >
         <div className={styles.modalContainer}>
           <div>

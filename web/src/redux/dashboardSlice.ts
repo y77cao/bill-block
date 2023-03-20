@@ -71,9 +71,9 @@ export const getInvoices = (address) => async (dispatch, getState) => {
   dispatch(getInvoicesRequest());
   try {
     const state = getState();
-    const { contractClient } = state.account;
+    const { contractClient, account } = state.account;
     const invoicesByProvider = await contractClient.getInvoicesByProvider(
-      address
+      address || account
     );
     const invoicesByClient = await contractClient.getInvoicesByClient(address);
     const parsedInvoicesByProvider = await parseInvoices(invoicesByProvider);
