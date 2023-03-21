@@ -11,7 +11,7 @@
 
 .invoiceTitle {
   font-size: 2rem;
-  margin: 20px;
+  margin: 30px 20px;
 }
 
 .invoiceTop {
@@ -84,6 +84,18 @@
 
 .milestoneItem > * {
   margin: 0 10px;
+}
+
+.totalContainer {
+  display: flex;
+  align-items: center;
+  margin: 20px;
+}
+
+.totalInnerContainer {
+  width: 500px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .payInvoiceContainer {

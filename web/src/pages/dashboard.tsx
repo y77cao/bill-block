@@ -68,7 +68,12 @@ export default function Dashboard() {
             </Box>
             <TabPanel
               value="1"
-              sx={{ width: "90%", marginLeft: "auto", marginRight: "auto" }}
+              sx={{
+                width: "90%",
+                marginLeft: "auto",
+                marginRight: "auto",
+                overflow: "scroll",
+              }}
             >
               <TableContainer>
                 <Table>
@@ -91,7 +96,12 @@ export default function Dashboard() {
             </TabPanel>
             <TabPanel
               value="2"
-              sx={{ width: "90%", marginLeft: "auto", marginRight: "auto" }}
+              sx={{
+                width: "90%",
+                marginLeft: "auto",
+                marginRight: "auto",
+                overflow: "scroll",
+              }}
             >
               <TableContainer>
                 <Table>

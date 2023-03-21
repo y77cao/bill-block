@@ -38,7 +38,7 @@ const Pay = () => {
       window.location.reload();
       dispatch(initPay(Number(id)));
     });
-  }, []);
+  }, [id]);
 
   const { invoice, loading } = pay;
 
@@ -50,6 +50,7 @@ const Pay = () => {
         }`;
   };
 
+  if (!invoice) return <div>loading...</div>;
   return (
     <div>
       <div className={styles.payContainer}>
@@ -117,7 +118,10 @@ const Pay = () => {
                   </TableRow>
                   {invoice.milestones.map((milestone, index) => {
                     return (
-                      <TableRow key={index}>
+                      <TableRow
+                        key={index}
+                        sx={{ borderStyle: "hidden!important" }}
+                      >
                         <TableCell></TableCell>
                         <TableCell>{milestone.name}</TableCell>
                         <TableCell>
@@ -130,11 +134,15 @@ const Pay = () => {
                       </TableRow>
                     );
                   })}
+                  <TableRow sx={{ borderStyle: "hidden!important" }}>
+                    <TableCell></TableCell>
+                    <TableCell>Total</TableCell>
+                    <TableCell>{getAmount()}</TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </TableContainer>
           </div>
-          <div className={styles.totalContainer}></div>
 
           <Divider />
           <div className={styles.payInvoiceContainer}>
