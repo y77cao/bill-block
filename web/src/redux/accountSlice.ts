@@ -75,8 +75,6 @@ export const connectWallet = () => async (dispatch, getState) => {
 export const updateAccountData = (newAccount) => async (dispatch, getState) => {
   dispatch(updateAccountRequest());
   try {
-    const state = getState();
-
     dispatch(getInvoices(newAccount));
     dispatch(
       updateAccountSuccess({

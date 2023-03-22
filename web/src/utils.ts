@@ -1,5 +1,5 @@
 import { Invoice, InvoiceStatus, TokenType } from "./types";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { networkIdToTokenSymbolToAddresses } from "./constants";
 import { LocalStorageClient } from "./clients/localStorageClient";
 
@@ -34,6 +34,8 @@ export const parseInvoices = async (invoices): Promise<Invoice[]> => {
     const metadata = invoiceMetadata.find(
       (metadata) => metadata?.id === id.toNumber()
     );
+    const currMilestoneNumber = currMilestone.toNumber();
+    const amountDue = getAmountDue(amounts, currMilestoneNumber);
 
     return {
       id: id.toNumber(),
@@ -45,14 +47,22 @@ export const parseInvoices = async (invoices): Promise<Invoice[]> => {
       itemDescription: metadata?.itemDescription,
       tokenSymbol: metadata?.tokenSymbol,
       amount: ethers.utils.formatEther(total),
+      amountDue: ethers.utils.formatEther(amountDue),
       tokenAddress: token,
       tokenId: isErc721 ? total.toNumber() : null,
       milestones: metadata?.milestones,
-      currMilestone: currMilestone.toNumber(),
+      currMilestone: currMilestoneNumber,
       status: status as InvoiceStatus,
       tokenType,
     };
   });
+};
+
+const getAmountDue = (amounts: BigNumber[], currMilestone: number) => {
+  return amounts.reduce((sum, amount, index) => {
+    if (index >= currMilestone) return sum.add(amount);
+    return sum;
+  }, BigNumber.from(0));
 };
 
 export const getTokenAddressFromSymbol = (symbol: string) => {

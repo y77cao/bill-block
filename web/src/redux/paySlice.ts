@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { appError } from "./appSlice";
 import { Invoice } from "@/types";
 import { ContractClient } from "@/clients/contractClient";
+import { initSuccess } from "./accountSlice";
 import { parseInvoices } from "@/utils";
 
 const initialState = {
@@ -44,7 +45,12 @@ export const initPay = (invoiceId: number) => async (dispatch, getState) => {
     dispatch(
       payInitSuccess({
         invoice: parsedInvoices[0],
+      })
+    );
+    dispatch(
+      initSuccess({
         contractClient,
+        account,
       })
     );
   } catch (err) {

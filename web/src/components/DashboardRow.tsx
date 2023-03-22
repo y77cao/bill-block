@@ -1,21 +1,25 @@
 import React from "react";
-import { payInvoice } from "@/redux/dashboardSlice";
 import { Invoice, InvoiceStatus, TokenType } from "@/types";
-import { Button, TableRow, TableCell } from "@mui/material";
+import { Button, TableRow, TableCell, Chip } from "@mui/material";
 import { ReleaseFundModal } from "./ReleaseFundModal";
-import { AppDispatch } from "@/redux/store";
-import { useDispatch } from "react-redux";
+import { InvoiceStatusPill } from "./InvoiceStatusPill";
+import { PayModal } from "./PayModal";
 
 export const DashboardRow = (props: { row: Invoice; own: boolean }) => {
   const { row, own } = props;
-  const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = React.useState(false);
   const [openModal, setOpenModal] = React.useState(false);
 
   const getActionComponent = () => {
     switch (row.status) {
       case InvoiceStatus.CREATED:
-        return <></>;
+        return (
+          <PayModal
+            invoice={row}
+            open={openModal}
+            onClose={() => setOpenModal(false)}
+          />
+        );
       case InvoiceStatus.FUNDED:
       case InvoiceStatus.PARTIALLY_PAID:
         return (
@@ -43,10 +47,7 @@ export const DashboardRow = (props: { row: Invoice; own: boolean }) => {
     switch (status) {
       case InvoiceStatus.CREATED:
         return (
-          <Button
-            variant="contained"
-            onClick={() => dispatch(payInvoice(invoice))}
-          >
+          <Button variant="contained" onClick={() => setOpenModal(true)}>
             Pay
           </Button>
         );
@@ -78,7 +79,9 @@ export const DashboardRow = (props: { row: Invoice; own: boolean }) => {
           {row.tokenType === TokenType.ERC721 ? "1" : row.amount.toString()}{" "}
           {row.tokenSymbol}
         </TableCell>
-        <TableCell>{InvoiceStatus[row.status as number]}</TableCell>
+        <TableCell>
+          <InvoiceStatusPill status={row.status} />
+        </TableCell>
         <TableCell>{getActionButton(row, own)}</TableCell>
       </TableRow>
       {getActionComponent()}

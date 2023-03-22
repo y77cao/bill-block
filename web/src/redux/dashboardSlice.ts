@@ -67,7 +67,7 @@ export const {
   clearTransaction,
 } = dashboardSlice.actions;
 
-export const getInvoices = (address) => async (dispatch, getState) => {
+export const getInvoices = (address?: string) => async (dispatch, getState) => {
   dispatch(getInvoicesRequest());
   try {
     const state = getState();

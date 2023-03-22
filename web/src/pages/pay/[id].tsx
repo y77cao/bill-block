@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 
-import React from "react";
+import React, { useState } from "react";
 
 import { useEffect } from "react";
 import styles from "@/styles/pay.module.css";
@@ -16,11 +16,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Checkbox,
 } from "@mui/material";
 import { initPay } from "@/redux/paySlice";
 import Grid from "@mui/material/Unstable_Grid2";
 import { LoadingButton } from "@mui/lab";
-import { InvoiceStatus, TokenType } from "@/types";
+import { Invoice, InvoiceStatus, TokenType } from "@/types";
+import { InvoiceStatusPill } from "@/components/InvoiceStatusPill";
+import { ReleaseFundModal } from "@/components/ReleaseFundModal";
+import { PayModal } from "@/components/PayModal";
 
 const Pay = () => {
   const router = useRouter();
@@ -28,6 +32,8 @@ const Pay = () => {
 
   const dispatch = useDispatch<AppDispatch>();
   const pay = useSelector((state) => state.pay);
+
+  const [openModal, setOpenModal] = useState<boolean>(false);
 
   useEffect(() => {
     dispatch(initPay(Number(id)));
@@ -40,12 +46,85 @@ const Pay = () => {
     });
   }, [id]);
 
+  const getActionComponent = (invoice: Invoice) => {
+    switch (invoice.status) {
+      case InvoiceStatus.CREATED:
+        return (
+          <PayModal
+            invoice={invoice}
+            open={openModal}
+            onClose={() => {
+              setOpenModal(false);
+              dispatch(initPay(Number(id)));
+            }}
+          />
+        );
+      case InvoiceStatus.FUNDED:
+      case InvoiceStatus.PARTIALLY_PAID:
+        return (
+          <ReleaseFundModal
+            invoice={invoice}
+            open={openModal}
+            onClose={() => {
+              setOpenModal(false);
+              dispatch(initPay(Number(id)));
+            }}
+          />
+        );
+      case InvoiceStatus.PAID:
+      case InvoiceStatus.TERMINATED:
+        return null;
+    }
+  };
+
+  const getActionButton = (invoice: Invoice, own: boolean) => {
+    const { status } = invoice;
+    if (own) {
+      return null;
+    }
+    switch (status) {
+      case InvoiceStatus.CREATED:
+        return [
+          // eslint-disable-next-line react/jsx-key
+          <div>
+            <LoadingButton
+              variant="contained"
+              fullWidth
+              onClick={() => setOpenModal(true)}
+            >
+              Pay With Metamask
+            </LoadingButton>
+          </div>,
+          // eslint-disable-next-line react/jsx-key
+          <div>
+            <LoadingButton variant="contained" fullWidth>
+              Pay With Credit Card
+            </LoadingButton>
+          </div>,
+        ];
+      case InvoiceStatus.FUNDED:
+      case InvoiceStatus.PARTIALLY_PAID:
+        return (
+          <LoadingButton
+            variant="contained"
+            onClick={() => setOpenModal(true)}
+            sx={{ margin: "10px 0 0 0" }}
+          >
+            Release Fund
+          </LoadingButton>
+        );
+      case InvoiceStatus.PAID:
+      case InvoiceStatus.TERMINATED:
+        return null;
+    }
+  };
+
   const { invoice, loading } = pay;
 
-  const getAmount = () => {
+  const getAmount = (amount) => {
     return invoice.tokenType === TokenType.ERC721
       ? `${invoice.tokenSymbol} #${invoice.tokenId}`
-      : `${invoice.amount} ${
+      : `${amount} ${
           invoice.tokrnType === TokenType.ETH ? "ETH" : invoice.tokenSymbol
         }`;
   };
@@ -87,7 +166,9 @@ const Pay = () => {
                   <div>Status:</div>
                 </Grid>
                 <Grid xs={8}>
-                  <div>{InvoiceStatus[invoice.status]}</div>
+                  <div>
+                    <InvoiceStatusPill status={invoice.status} />
+                  </div>
                 </Grid>
               </Grid>
             </div>
@@ -99,9 +180,11 @@ const Pay = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Item Name</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Amount</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Item Name</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      Description
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Amount</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -113,7 +196,9 @@ const Pay = () => {
                         : "N/A"}
                     </TableCell>
                     <TableCell>
-                      {invoice.milestones.length ? null : getAmount()}
+                      {invoice.milestones.length
+                        ? null
+                        : getAmount(invoice.amount)}
                     </TableCell>
                   </TableRow>
                   {invoice.milestones.map((milestone, index) => {
@@ -123,21 +208,54 @@ const Pay = () => {
                         sx={{ borderStyle: "hidden!important" }}
                       >
                         <TableCell></TableCell>
-                        <TableCell>{milestone.name}</TableCell>
-                        <TableCell>
+                        <TableCell
+                          sx={
+                            index < invoice.currMilestone
+                              ? { textDecoration: "line-through" }
+                              : null
+                          }
+                        >
+                          {milestone.name}
+                        </TableCell>
+                        <TableCell
+                          sx={
+                            index < invoice.currMilestone
+                              ? { textDecoration: "line-through" }
+                              : null
+                          }
+                        >
                           {`${milestone.amount} ${
                             invoice.tokenType === TokenType.ETH
                               ? "ETH"
                               : invoice.tokenSymbol
                           }`}
+                          {index < invoice.currMilestone ? (
+                            <Checkbox
+                              checked
+                              size="small"
+                              color="success"
+                              sx={{ padding: "0 5px" }}
+                            />
+                          ) : null}
                         </TableCell>
                       </TableRow>
                     );
                   })}
                   <TableRow sx={{ borderStyle: "hidden!important" }}>
                     <TableCell></TableCell>
-                    <TableCell>Total</TableCell>
-                    <TableCell>{getAmount()}</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Total</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      {getAmount(invoice.amount)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow sx={{ borderStyle: "hidden!important" }}>
+                    <TableCell></TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      Amount Due
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      {getAmount(invoice.amountDue)}
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -146,12 +264,9 @@ const Pay = () => {
 
           <Divider />
           <div className={styles.payInvoiceContainer}>
-            <div>
-              <LoadingButton variant="contained" fullWidth>
-                Pay Invoice
-              </LoadingButton>
-            </div>
+            {getActionButton(invoice, false)}
           </div>
+          {getActionComponent(invoice)}
         </Paper>
       </div>
     </div>

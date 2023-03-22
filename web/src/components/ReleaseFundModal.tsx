@@ -11,7 +11,9 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import styles from "../styles/ReleaseFundModal.module.css";
+import styled from "@emotion/styled";
 
 export const ReleaseFundModal = ({ invoice, open, onClose }) => {
   const {
@@ -39,16 +41,34 @@ export const ReleaseFundModal = ({ invoice, open, onClose }) => {
       } to address ${providerAddress}`;
     }
   };
-  return (
-    <Modal
-      open={open}
-      onClose={() => {
-        dispatch(clearTransaction());
-        onClose();
-      }}
-    >
+
+  const SuccessView = () => {
+    return (
       <div className={styles.modalContainer}>
-        <div className={styles.title}>{getReleaseMessage()}</div>
+        <div>
+          <CheckCircleOutlineIcon color="secondary" sx={{ fontSize: 80 }} />
+        </div>
+        <>Fund released successfully!</>
+        <div className={styles.buttonContainer}>
+          <Button
+            variant="contained"
+            onClick={() => {
+              dispatch(clearTransaction());
+              onClose();
+            }}
+          >
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const ConfirmView = () => {
+    return (
+      <div className={styles.modalContainer}>
+        <div className={styles.title}>Release Payment(s)</div>
+        <div className={styles.message}>{getReleaseMessage()}</div>
         <div className={styles.checkboxGroupContainer}>
           <FormGroup>
             {milestones.map((milestone, index) => {
@@ -75,6 +95,7 @@ export const ReleaseFundModal = ({ invoice, open, onClose }) => {
         <div className={styles.buttonContainer}>
           <LoadingButton
             variant="contained"
+            fullWidth
             onClick={() =>
               dispatch(
                 releaseFund(invoice.id, !milestones.length ? 1 : milestoneUntil)
@@ -86,6 +107,18 @@ export const ReleaseFundModal = ({ invoice, open, onClose }) => {
           </LoadingButton>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => {
+        dispatch(clearTransaction());
+        onClose();
+      }}
+    >
+      {dashboard.transaction ? <SuccessView /> : <ConfirmView />}
     </Modal>
   );
 };

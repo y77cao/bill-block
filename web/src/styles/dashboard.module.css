@@ -18,29 +18,20 @@
   margin: 20px;
 }
 
-.modalContainer {
-  width: 400px;
-  height: 300px;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
-  background-color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-around;
-  border-radius: 3px;
-}
-
-.modalContainer > * {
-  padding: 0 30px;
-}
-
 .buttonContainer {
   display: flex;
   justify-content: space-around;
   width: 90%;
+}
+
+.emptyView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: space-around;
+}
+
+.emptyView > * {
+  margin: 10px;
 }

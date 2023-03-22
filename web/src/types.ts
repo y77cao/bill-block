@@ -8,6 +8,7 @@ export type Invoice = {
   itemDescription?: string;
   tokenSymbol: string | null;
   amount: string | null;
+  amountDue?: string;
   tokenAddress: string | null;
   tokenId: number | null;
   milestones?: Milestone[];

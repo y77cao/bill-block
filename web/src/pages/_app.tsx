@@ -7,14 +7,6 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { store } from "../redux/store";
 import "../styles/global.css";
 
-declare module "@mui/material/styles" {
-  interface Theme {
-    status: {
-      danger: string;
-    };
-  }
-}
-
 const theme = createTheme({
   palette: {
     primary: {
@@ -22,6 +14,15 @@ const theme = createTheme({
     },
     secondary: {
       main: "#a09cff",
+    },
+    success: {
+      main: "#adf294",
+    },
+    warning: {
+      main: "#ffdc91",
+    },
+    error: {
+      main: "#eda195",
     },
   },
 });
