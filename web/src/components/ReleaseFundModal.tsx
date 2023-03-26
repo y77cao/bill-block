@@ -1,5 +1,5 @@
 import { clearTransaction, releaseFund } from "@/redux/dashboardSlice";
-import { AppDispatch } from "@/redux/store";
+import { AppDispatch, RootState } from "@/redux/store";
 import { TokenType } from "@/types";
 import { LoadingButton } from "@mui/lab";
 import {
@@ -26,7 +26,7 @@ export const ReleaseFundModal = ({ invoice, open, onClose }) => {
   } = invoice;
 
   const dispatch = useDispatch<AppDispatch>();
-  const dashboard = useSelector((state) => state.dashboard);
+  const dashboard = useSelector((state: RootState) => state.dashboard);
   const [milestoneUntil, setMilestoneUntil] = useState(currMilestone);
 
   const getReleaseMessage = () => {

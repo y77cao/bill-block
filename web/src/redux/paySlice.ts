@@ -4,8 +4,16 @@ import { Invoice } from "@/types";
 import { ContractClient } from "@/clients/contractClient";
 import { initSuccess } from "./accountSlice";
 import { parseInvoices } from "@/utils";
+import { ethers } from "ethers";
 
-const initialState = {
+type State = {
+  loading: boolean;
+  transaction: ethers.Transaction | null;
+  invoice: Invoice | null;
+  contractClient: typeof ContractClient | null;
+};
+
+const initialState: State = {
   loading: false,
   transaction: null,
   invoice: null,
@@ -54,9 +62,12 @@ export const initPay = (invoiceId: number) => async (dispatch, getState) => {
       })
     );
   } catch (err) {
-    console.log(err);
-    dispatch(error());
-    dispatch(appError(err.message));
+    if (err instanceof Error) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+
+    throw err;
   }
 };
 

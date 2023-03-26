@@ -24,7 +24,7 @@ import { init, updateAccountData } from "@/redux/accountSlice";
 
 import styles from "@/styles/create.module.css";
 import PageHeader from "@/components/PageHeader";
-import { AppDispatch } from "@/redux/store";
+import { AppDispatch, RootState } from "@/redux/store";
 import { networkIdToTokenSymbolToAddresses } from "@/constants";
 import { Milestone, TokenType } from "@/types";
 import { ethers } from "ethers";
@@ -34,7 +34,7 @@ export default function Create() {
   const router = useRouter();
 
   const dispatch = useDispatch<AppDispatch>();
-  const create = useSelector((state) => state.create);
+  const create = useSelector((state: RootState) => state.create);
 
   const [providerAddress, setProviderAddress] = useState(
     "0x00057dbAb8216b5259C581fe37A43C66245d8584"
@@ -188,6 +188,7 @@ export default function Create() {
                 fullWidth
                 size="small"
                 onChange={(value) => {
+                  // @ts-ignore
                   setDate(value.toDate());
                 }}
               />
@@ -197,6 +198,7 @@ export default function Create() {
                 fullWidth
                 size="small"
                 onChange={(value) => {
+                  // @ts-ignore
                   setDueDate(value.toDate());
                 }}
               />
@@ -272,6 +274,7 @@ export default function Create() {
                 <div>
                   <FormControl
                     disabled={
+                      // @ts-ignore
                       tokenType === TokenType.ERC721 || tokenAddress?.length > 0
                     }
                   >

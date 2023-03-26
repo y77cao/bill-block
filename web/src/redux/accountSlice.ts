@@ -55,7 +55,11 @@ export const init = () => async (dispatch) => {
     dispatch(initSuccess({ contractClient, account }));
     if (account) dispatch(getInvoices(account));
   } catch (err) {
-    dispatch(appError(err.message));
+    if (err instanceof Error) {
+      dispatch(appError(err.message));
+    }
+
+    throw err;
   }
 };
 
@@ -67,8 +71,12 @@ export const connectWallet = () => async (dispatch, getState) => {
     dispatch(connectSuccess({ account }));
     dispatch(getInvoices(account));
   } catch (err) {
-    dispatch(error());
-    dispatch(appError(err.message));
+    if (err instanceof Error) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+
+    throw err;
   }
 };
 
@@ -82,8 +90,12 @@ export const updateAccountData = (newAccount) => async (dispatch, getState) => {
       })
     );
   } catch (err) {
-    dispatch(error());
-    dispatch(appError(err.message));
+    if (err instanceof Error) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+
+    throw err;
   }
 };
 

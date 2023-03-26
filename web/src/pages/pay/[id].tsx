@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useEffect } from "react";
 import styles from "@/styles/pay.module.css";
 import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch } from "@/redux/store";
+import { AppDispatch, RootState } from "@/redux/store";
 import {
   Paper,
   Box,
@@ -31,7 +31,7 @@ const Pay = () => {
   const { id } = router.query;
 
   const dispatch = useDispatch<AppDispatch>();
-  const pay = useSelector((state) => state.pay);
+  const pay = useSelector((state: RootState) => state.pay);
 
   const [openModal, setOpenModal] = useState<boolean>(false);
 
@@ -122,10 +122,11 @@ const Pay = () => {
   const { invoice, loading } = pay;
 
   const getAmount = (amount) => {
+    if (!invoice) return null;
     return invoice.tokenType === TokenType.ERC721
       ? `${invoice.tokenSymbol} #${invoice.tokenId}`
       : `${amount} ${
-          invoice.tokrnType === TokenType.ETH ? "ETH" : invoice.tokenSymbol
+          invoice.tokenType === TokenType.ETH ? "ETH" : invoice.tokenSymbol
         }`;
   };
 
@@ -167,7 +168,9 @@ const Pay = () => {
                 </Grid>
                 <Grid xs={8}>
                   <div>
-                    <InvoiceStatusPill status={invoice.status} />
+                    <InvoiceStatusPill
+                      status={invoice.status as InvoiceStatus}
+                    />
                   </div>
                 </Grid>
               </Grid>
@@ -191,17 +194,17 @@ const Pay = () => {
                   <TableRow>
                     <TableCell>{invoice.itemName}</TableCell>
                     <TableCell>
-                      {invoice.itemDescription.length
+                      {invoice.itemDescription?.length
                         ? invoice.itemDescription
                         : "N/A"}
                     </TableCell>
                     <TableCell>
-                      {invoice.milestones.length
+                      {invoice.milestones?.length
                         ? null
                         : getAmount(invoice.amount)}
                     </TableCell>
                   </TableRow>
-                  {invoice.milestones.map((milestone, index) => {
+                  {invoice.milestones?.map((milestone, index) => {
                     return (
                       <TableRow
                         key={index}
@@ -210,7 +213,7 @@ const Pay = () => {
                         <TableCell></TableCell>
                         <TableCell
                           sx={
-                            index < invoice.currMilestone
+                            index < (invoice.currMilestone as number)
                               ? { textDecoration: "line-through" }
                               : null
                           }
@@ -219,7 +222,7 @@ const Pay = () => {
                         </TableCell>
                         <TableCell
                           sx={
-                            index < invoice.currMilestone
+                            index < (invoice.currMilestone as number)
                               ? { textDecoration: "line-through" }
                               : null
                           }
@@ -229,7 +232,7 @@ const Pay = () => {
                               ? "ETH"
                               : invoice.tokenSymbol
                           }`}
-                          {index < invoice.currMilestone ? (
+                          {index < (invoice.currMilestone as number) ? (
                             <Checkbox
                               checked
                               size="small"

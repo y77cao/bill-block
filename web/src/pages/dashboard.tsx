@@ -16,13 +16,13 @@ import { TabContext, TabList, TabPanel } from "@mui/lab";
 import { init, updateAccountData } from "@/redux/accountSlice";
 import styles from "@/styles/dashboard.module.css";
 import PageHeader from "@/components/PageHeader";
-import { AppDispatch } from "@/redux/store";
+import { AppDispatch, RootState } from "@/redux/store";
 import { DashboardRow } from "@/components/DashboardRow";
 import { Invoice } from "@/types";
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
-  const dashboard = useSelector((state) => state.dashboard);
+  const dashboard = useSelector((state: RootState) => state.dashboard);
 
   const [tabValue, setTabValue] = useState("1");
 

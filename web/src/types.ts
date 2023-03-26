@@ -2,8 +2,8 @@ export type Invoice = {
   id?: number;
   providerAddress: string;
   clientAddress: string;
-  date: Date;
-  dueDate: Date;
+  date: string;
+  dueDate: string;
   itemName: string;
   itemDescription?: string;
   tokenSymbol: string | null;
@@ -14,6 +14,21 @@ export type Invoice = {
   milestones?: Milestone[];
   currMilestone?: number;
   status?: InvoiceStatus;
+  tokenType: TokenType;
+};
+
+export type InvoiceCreate = {
+  providerAddress: string;
+  clientAddress: string;
+  date: Date;
+  dueDate: Date;
+  itemName: string;
+  itemDescription?: string;
+  tokenSymbol: string | null;
+  amount: string | null;
+  tokenAddress: string | null;
+  tokenId: number | null;
+  milestones?: Milestone[];
   tokenType: TokenType;
 };
 

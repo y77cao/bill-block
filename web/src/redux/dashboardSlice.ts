@@ -1,16 +1,23 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { ContractClient } from "../clients/contractClient";
-import { ethers, BigNumber } from "ethers";
 import { appError } from "./appSlice";
 import { Invoice } from "@/types";
 import { parseInvoices } from "@/utils";
+import { ethers } from "ethers";
 
 export enum ActionType {
   PAY = "pay",
   RELEASE = "release",
 }
 
-const initialState = {
+type State = {
+  loading: boolean;
+  actionType: ActionType | null;
+  transaction: ethers.Transaction | null;
+  invoicesByProvider: Invoice[];
+  invoicesByClient: Invoice[];
+};
+
+const initialState: State = {
   loading: false,
   actionType: null,
   transaction: null,
@@ -86,9 +93,12 @@ export const getInvoices = (address?: string) => async (dispatch, getState) => {
       })
     );
   } catch (err) {
-    console.log(err);
-    dispatch(error());
-    dispatch(appError(err.message));
+    if (err instanceof Error) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+
+    throw err;
   }
 };
 
@@ -104,9 +114,12 @@ export const payInvoice = (invoice: Invoice) => async (dispatch, getState) => {
       })
     );
   } catch (err) {
-    console.log(err);
-    dispatch(error());
-    dispatch(appError(err.message));
+    if (err instanceof Error) {
+      dispatch(error());
+      dispatch(appError(err.message));
+    }
+
+    throw err;
   }
 };
 
@@ -123,9 +136,12 @@ export const releaseFund =
         })
       );
     } catch (err) {
-      console.log(err);
-      dispatch(error());
-      dispatch(appError(err.message));
+      if (err instanceof Error) {
+        dispatch(error());
+        dispatch(appError(err.message));
+      }
+
+      throw err;
     }
   };
 

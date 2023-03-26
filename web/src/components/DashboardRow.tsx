@@ -76,11 +76,11 @@ export const DashboardRow = (props: { row: Invoice; own: boolean }) => {
         </TableCell>
         <TableCell>{row.itemName}</TableCell>
         <TableCell>
-          {row.tokenType === TokenType.ERC721 ? "1" : row.amount.toString()}{" "}
+          {row.tokenType === TokenType.ERC721 ? "1" : row.amount?.toString()}{" "}
           {row.tokenSymbol}
         </TableCell>
         <TableCell>
-          <InvoiceStatusPill status={row.status} />
+          <InvoiceStatusPill status={row.status as InvoiceStatus} />
         </TableCell>
         <TableCell>{getActionButton(row, own)}</TableCell>
       </TableRow>

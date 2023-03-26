@@ -1,5 +1,5 @@
 import { clearTransaction, payInvoice } from "@/redux/dashboardSlice";
-import { AppDispatch } from "@/redux/store";
+import { AppDispatch, RootState } from "@/redux/store";
 import { TokenType } from "@/types";
 import { LoadingButton } from "@mui/lab";
 import { Button, Modal } from "@mui/material";
@@ -11,7 +11,7 @@ export const PayModal = ({ invoice, open, onClose }) => {
   const { id, amount, tokenId, tokenSymbol } = invoice;
 
   const dispatch = useDispatch<AppDispatch>();
-  const dashboard = useSelector((state) => state.dashboard);
+  const dashboard = useSelector((state: RootState) => state.dashboard);
 
   const getPayMessage = () => {
     if (invoice.tokenType === TokenType.ERC721) {

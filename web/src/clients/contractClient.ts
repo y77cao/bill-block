@@ -1,4 +1,4 @@
-import { Invoice, TokenType } from "@/types";
+import { Invoice, InvoiceCreate, TokenType } from "@/types";
 import { ethers, BigNumber } from "ethers";
 
 import InvoiceFactory from "../abi/InvoiceFactory.json";
@@ -96,7 +96,7 @@ export class ContractClient {
     return this.contract.getInvoicesByClient(clientAddress);
   }
 
-  async createInvoice(invoice: Invoice) {
+  async createInvoice(invoice: InvoiceCreate) {
     const signer = this.provider.getSigner();
     const contractWithSigner = this.contract.connect(signer);
 
@@ -155,7 +155,7 @@ export class ContractClient {
     return createInvoiceResult;
   }
 
-  private async createForETH(invoice: Invoice, contractWithSigner) {
+  private async createForETH(invoice: InvoiceCreate, contractWithSigner) {
     const { clientAddress, providerAddress, dueDate, amount, milestones } =
       invoice;
     const amountInWei = ethers.utils.parseEther(amount as string);
@@ -178,7 +178,7 @@ export class ContractClient {
     return { txn, invoiceId };
   }
 
-  private async createForERC20(invoice: Invoice, contractWithSigner) {
+  private async createForERC20(invoice: InvoiceCreate, contractWithSigner) {
     const {
       clientAddress,
       providerAddress,
@@ -210,7 +210,7 @@ export class ContractClient {
     return { txn, invoiceId };
   }
 
-  private async createForERC721(invoice: Invoice, contractWithSigner) {
+  private async createForERC721(invoice: InvoiceCreate, contractWithSigner) {
     const {
       clientAddress,
       providerAddress,

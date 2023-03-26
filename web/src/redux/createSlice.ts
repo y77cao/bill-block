@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { appError } from "./appSlice";
-import { Invoice } from "@/types";
+import { Invoice, InvoiceCreate } from "@/types";
 
 const initialState = {
   loading: false,
@@ -38,7 +38,7 @@ export const {
 } = createInvoiceSlice.actions;
 
 export const createInvoice =
-  (invoice: Invoice) => async (dispatch, getState) => {
+  (invoice: InvoiceCreate) => async (dispatch, getState) => {
     dispatch(createInvoiceRequest());
     try {
       const state = getState();
@@ -51,9 +51,12 @@ export const createInvoice =
         })
       );
     } catch (err) {
-      console.log(err);
-      dispatch(error());
-      dispatch(appError(err.message));
+      if (err instanceof Error) {
+        dispatch(error());
+        dispatch(appError(err.message));
+      }
+
+      throw err;
     }
   };
 
