@@ -134,7 +134,7 @@ export default function Create() {
   };
 
   const onClickCreate = () => {
-    const newInvoice = {
+    const invoiceCreate = {
       providerAddress,
       clientAddress,
       date: date as Date,
@@ -152,7 +152,7 @@ export default function Create() {
     const invoiceIsValid = validateInvoice();
     if (invoiceIsValid) {
       dispatch(clearAppError());
-      dispatch(createInvoice(newInvoice));
+      dispatch(createInvoice(invoiceCreate));
     }
   };
 

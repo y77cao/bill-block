@@ -51,7 +51,7 @@
 }
 
 .itemLeft > * {
-  margin: 15px 0;
+  margin: 15px 0 !important;
 }
 
 .itemRight {
@@ -83,7 +83,7 @@
 }
 
 .milestoneItem > * {
-  margin: 0 10px;
+  margin: 0 10px !important;
 }
 
 .createInvoiceContainer {
@@ -94,7 +94,7 @@
 }
 
 .createInvoiceContainer > * {
-  margin: 10px 0;
+  margin: 10px 0 !important;
   width: 70%;
 }
 
@@ -116,7 +116,7 @@
 }
 
 .modalContainer > * {
-  padding: 0 50px;
+  padding: 0 50px !important;
   text-align: center;
 }
 
